@@ -310,7 +310,7 @@ export default function App() {
 
   if (showSettings) {
     return (
-      <div ref={rootRef}>
+      <div ref={rootRef} style={{ width: 400 }}>
         <Settings
           onSave={handleSettingsSaved}
           onBack={hasApiKey ? () => setShowSettings(false) : null}
@@ -320,7 +320,7 @@ export default function App() {
   }
 
   return (
-    <div ref={rootRef}>
+    <div ref={rootRef} style={{ width: 400 }}>
       <Widget
         status={status}
         mode={mode}

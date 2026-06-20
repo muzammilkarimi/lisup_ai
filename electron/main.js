@@ -24,7 +24,7 @@ function createWidgetWindow() {
 
   widgetWindow = new BrowserWindow({
     width: 400,
-    height: 240,
+    height: 460,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -38,7 +38,7 @@ function createWidgetWindow() {
     },
   })
 
-  widgetWindow.setPosition(width - 420, height - 260)
+  widgetWindow.setPosition(width - 420, height - 480)
 
   if (isDev) {
     widgetWindow.loadURL(process.env.ELECTRON_START_URL)

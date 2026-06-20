@@ -385,7 +385,7 @@ export default function Settings({ onSave, onBack }) {
       }}
     >
       {/* Header */}
-      <div className="flex justify-between items-center" style={{ padding: '17px 20px 0' }}>
+      <div className="flex justify-between items-center" style={{ padding: '14px 18px 0' }}>
         <div className="flex items-center gap-2">
           <div className="w-[22px] h-[22px] rounded-[6px] flex items-center justify-center" style={{ background: '#E07B39' }}>
             <span className="text-white font-bold" style={{ fontSize: '11px' }}>स</span>
@@ -408,7 +408,7 @@ export default function Settings({ onSave, onBack }) {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-0 mt-4 mx-5 rounded-[10px] p-[3px]" style={{ background: '#F5F4F1' }}>
+      <div className="flex gap-0 mt-3 mx-4 rounded-[10px] p-[3px]" style={{ background: '#F5F4F1' }}>
         {TABS.map(tab => (
           <button
             key={tab}
@@ -426,7 +426,7 @@ export default function Settings({ onSave, onBack }) {
       </div>
 
       {/* Tab content */}
-      <div style={{ padding: '20px 22px 24px' }}>
+      <div style={{ padding: '16px 18px 20px' }}>
         {activeTab === 'General'    && <GeneralTab    onSave={onSave} />}
         {activeTab === 'Dictionary' && <DictionaryTab />}
         {activeTab === 'Snippets'   && <SnippetsTab />}
