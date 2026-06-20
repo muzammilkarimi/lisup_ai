@@ -1,4 +1,5 @@
 import { QUICK_COMMANDS } from '../services/commands.js'
+import LisupIcon from './LisupIcon.jsx'
 
 const TONES = [
   { key: 'formal',  label: 'Formal'  },
@@ -17,14 +18,9 @@ function Header({ onHide, onOpenSettings }) {
         onClick={onOpenSettings}
         className="flex items-center gap-2 hover:opacity-70 transition-opacity"
       >
-        <div
-          className="w-[22px] h-[22px] rounded-[6px] flex items-center justify-center flex-shrink-0"
-          style={{ background: '#E07B39' }}
-        >
-          <span className="text-white font-bold" style={{ fontSize: '11px', lineHeight: 1 }}>स</span>
-        </div>
-        <span className="text-[13px] font-semibold" style={{ color: '#A29B91' }}>
-          Suniye <span style={{ color: '#E07B39' }}>Ji</span>
+        <LisupIcon size={22} />
+        <span className="text-[13px] font-semibold" style={{ color: '#1A1A1A' }}>
+          Lis<span style={{ color: '#E07B39' }}>up</span>
         </span>
       </button>
       <button
@@ -43,7 +39,8 @@ function Header({ onHide, onOpenSettings }) {
 
 // ── Clipboard pill ─────────────────────────────────────────────────────────────
 
-function ClipboardPill({ text, onRefresh }) {
+function ClipboardPill({ text, onRefresh, onClear }) {
+  const hasText = text && text.trim()
   return (
     <div className="flex items-center gap-1.5 mx-4 mt-2.5">
       <div
@@ -51,11 +48,24 @@ function ClipboardPill({ text, onRefresh }) {
         style={{ background: '#F5F4F1', color: '#8C857B', padding: '7px 11px' }}
         title={text || ''}
       >
-        {text && text.trim()
+        {hasText
           ? <>📋 {text.slice(0, 44)}{text.length > 44 ? '…' : ''}</>
           : <span style={{ color: '#C5BFB8' }}>📋 Copy text, then speak a command</span>
         }
       </div>
+      {hasText && (
+        <button
+          onClick={onClear}
+          title="Clear context"
+          className="flex-shrink-0 transition-opacity hover:opacity-60"
+          style={{ color: '#C5BFB8' }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      )}
       <button
         onClick={onRefresh}
         title="Re-read clipboard"
@@ -75,7 +85,7 @@ function ClipboardPill({ text, onRefresh }) {
 
 function ChipRow({ onRunCommand }) {
   return (
-    <div className="flex flex-wrap justify-center gap-[5px] px-4 pb-4 mt-3">
+    <div className="flex flex-wrap justify-center gap-[5px] px-4 pb-3 mt-2">
       {QUICK_COMMANDS.map((cmd) => (
         <button
           key={cmd}
@@ -124,18 +134,60 @@ function ToneChips({ activeTone, onApplyTone }) {
 
 // ── State views ────────────────────────────────────────────────────────────────
 
-function IdleView({ onStart }) {
+function ModeToggle({ manualMode, onSetManualMode }) {
+  const segments = [
+    { key: 'transcribe', icon: '🎙️', label: 'Transcribe' },
+    { key: 'command',    icon: '⚡',  label: 'Command'    },
+  ]
   return (
-    <div className="flex flex-col items-center pt-4 pb-1">
-      <button
-        onClick={onStart}
-        className="w-[64px] h-[64px] rounded-full flex items-center justify-center transition-transform active:scale-95"
-        style={{ background: '#23201C', boxShadow: '0 8px 20px -8px rgba(35,32,28,.55)' }}
-      >
-        <MicIcon />
-      </button>
-      <p className="mt-3 text-[13px] font-medium" style={{ color: '#9A938A' }}>
-        Press to speak
+    <div
+      className="flex mt-2 mb-0 rounded-chip"
+      style={{ background: '#F0EDE8', padding: '3px', gap: '2px' }}
+    >
+      {segments.map(({ key, icon, label }) => {
+        const active = manualMode === key
+        return (
+          <button
+            key={key}
+            onClick={() => onSetManualMode(key)}
+            className="flex items-center gap-1 text-[11.5px] font-semibold rounded-chip transition-all"
+            style={{
+              padding:    '5px 14px',
+              background: active ? '#23201C' : 'transparent',
+              color:      active ? '#FFFFFF'  : '#9A938A',
+              boxShadow:  active ? '0 1px 3px rgba(0,0,0,.18)' : 'none',
+            }}
+          >
+            <span style={{ fontSize: 12 }}>{icon}</span>{label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function IdleView({ onStart, manualMode, onSetManualMode }) {
+  const micBg = manualMode === 'command' ? '#E07B39' : '#23201C'
+  const micShadow = manualMode === 'command'
+    ? '0 8px 22px -8px rgba(224,123,57,.6)'
+    : '0 8px 20px -8px rgba(35,32,28,.55)'
+
+  return (
+    <div className="flex flex-col items-center pt-3 pb-1">
+      <ModeToggle manualMode={manualMode} onSetManualMode={onSetManualMode} />
+      <div className="mt-3">
+        <button
+          onClick={onStart}
+          className="w-[60px] h-[60px] rounded-full flex items-center justify-center transition-transform active:scale-95"
+          style={{ background: micBg, boxShadow: micShadow }}
+        >
+          <MicIcon />
+        </button>
+      </div>
+      <p className="mt-2 text-[12.5px] font-medium" style={{ color: '#9A938A' }}>
+        {manualMode === 'transcribe' && 'Speak — will clean your transcript'}
+        {manualMode === 'command'    && 'Speak your command'}
+        {manualMode === 'auto'       && 'Press to speak'}
       </p>
     </div>
   )
@@ -206,7 +258,7 @@ function ThinkingView({ detectedCommand, mode }) {
   )
 }
 
-function DoneView({ result, onInject, onCopy }) {
+function DoneView({ result, onInject, onCopy, onNew }) {
   return (
     <div className="px-4 pt-3 pb-2">
       <div
@@ -233,6 +285,16 @@ function DoneView({ result, onInject, onCopy }) {
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
           </svg>
           Copy
+        </button>
+        <button
+          onClick={onNew}
+          title="New — go back and speak again"
+          className="w-[38px] flex items-center justify-center rounded-btn transition-colors hover:bg-gray-50 active:scale-[.98]"
+          style={{ border: '1px solid #E2DDD5', color: '#524E47', background: 'white' }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 5v14M5 12l7-7 7 7"/>
+          </svg>
         </button>
       </div>
       <p className="text-center mt-1.5 text-[11px]" style={{ color: '#A9A299' }}>
@@ -276,17 +338,17 @@ function ErrorView({ error, onTryAgain }) {
 // ── Root ───────────────────────────────────────────────────────────────────────
 
 export default function Widget({
-  status, mode, clipboardText, result, error,
+  status, mode, manualMode, clipboardText, result, error,
   detectedCommand, activeTone,
-  onStartRecording, onStopRecording, onInject, onCopy,
-  onRunCommand, onApplyTone, onHide, onOpenSettings,
-  onRefreshClipboard, onTryAgain,
+  onStartRecording, onStopRecording, onInject, onCopy, onNew,
+  onRunCommand, onApplyTone, onSetManualMode, onHide, onOpenSettings,
+  onRefreshClipboard, onClearClipboard, onTryAgain,
 }) {
   const showClipPill = status !== 'done' && status !== 'error'
 
   return (
     <div
-      className="w-[400px] rounded-widget select-none overflow-hidden"
+      className="w-[400px] rounded-widget select-none pb-2"
       style={{
         background: '#FFFFFF',
         border: '1px solid #ECE8E1',
@@ -296,12 +358,16 @@ export default function Widget({
       <Header onHide={onHide} onOpenSettings={onOpenSettings} />
 
       {showClipPill && (
-        <ClipboardPill text={clipboardText} onRefresh={onRefreshClipboard} />
+        <ClipboardPill text={clipboardText} onRefresh={onRefreshClipboard} onClear={onClearClipboard} />
       )}
 
       {status === 'idle' && (
         <>
-          <IdleView onStart={onStartRecording} />
+          <IdleView
+            onStart={onStartRecording}
+            manualMode={manualMode}
+            onSetManualMode={onSetManualMode}
+          />
           <ChipRow onRunCommand={onRunCommand} />
         </>
       )}
@@ -322,7 +388,7 @@ export default function Widget({
 
       {status === 'done' && (
         <>
-          <DoneView result={result} onInject={onInject} onCopy={onCopy} />
+          <DoneView result={result} onInject={onInject} onCopy={onCopy} onNew={onNew} />
           {mode === 'transcribe' && (
             <ToneChips activeTone={activeTone} onApplyTone={onApplyTone} />
           )}

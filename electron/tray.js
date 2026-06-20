@@ -14,11 +14,11 @@ function createTray(widgetWindow) {
   }
 
   tray = new Tray(icon)
-  tray.setToolTip('Suniye Ji')
+  tray.setToolTip('Lisup')
 
   function buildMenu() {
     return Menu.buildFromTemplate([
-      { label: 'Suniye Ji', enabled: false },
+      { label: 'Lisup', enabled: false },
       { type: 'separator' },
       {
         label: 'Toggle Widget',

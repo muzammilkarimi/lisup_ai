@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, clipboard, screen } = require('electron')
 const path = require('path')
 const { registerHotkeys, unregisterHotkeys } = require('./hotkey')
+const { restoreForeground } = require('./windows-focus')
 const { createTray, destroyTray } = require('./tray')
 const { injectText } = require('./injector')
 const store = require('./store')
@@ -20,11 +21,16 @@ if (!gotLock) {
 }
 
 function createWidgetWindow() {
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize
+  const wa = screen.getPrimaryDisplay().workArea
+  // Fixed height — widget content is bottom-anchored inside via CSS flex
+  // Transparent empty space above is click-through (transparent: true)
+  const FIXED_H = 620
 
   widgetWindow = new BrowserWindow({
     width: 400,
-    height: 460,
+    height: FIXED_H,
+    x: wa.x + wa.width - 420,
+    y: wa.y + wa.height - FIXED_H - 20,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -38,8 +44,6 @@ function createWidgetWindow() {
     },
   })
 
-  widgetWindow.setPosition(width - 420, height - 480)
-
   if (isDev) {
     widgetWindow.loadURL(process.env.ELECTRON_START_URL)
   } else {
@@ -49,6 +53,7 @@ function createWidgetWindow() {
   widgetWindow.on('blur', () => {
     if (!isDev) widgetWindow.hide()
   })
+
 }
 
 // ── Clipboard ────────────────────────────────────────────────────────────────
@@ -57,8 +62,9 @@ ipcMain.handle('clipboard:write', (_, text)  => clipboard.writeText(text))
 
 // ── Injection ────────────────────────────────────────────────────────────────
 ipcMain.handle('inject:text', async (_, text) => {
+  restoreForeground()           // SetForegroundWindow on the app that was active before widget
   widgetWindow.hide()
-  await new Promise(r => setTimeout(r, 200))
+  await new Promise(r => setTimeout(r, 350))
   return await injectText(text)
 })
 
@@ -66,11 +72,8 @@ ipcMain.handle('inject:text', async (_, text) => {
 ipcMain.handle('window:hide', () => widgetWindow.hide())
 ipcMain.handle('window:show', () => { widgetWindow.show(); widgetWindow.focus() })
 
-ipcMain.handle('resize:window', (_, height) => {
-  widgetWindow.setContentSize(400, Math.ceil(height))
-  const wa = screen.getPrimaryDisplay().workAreaSize
-  widgetWindow.setPosition(wa.width - 420, wa.height - Math.ceil(height) - 20)
-})
+// resize:window is a no-op — window is fixed size, CSS handles layout
+ipcMain.handle('resize:window', () => {})
 
 // ── Store — API key ──────────────────────────────────────────────────────────
 ipcMain.handle('store:getApiKey', ()        => store.get('groq_api_key', ''))
@@ -87,13 +90,21 @@ ipcMain.handle('store:saveSettings', (_, s) => {
   }
 })
 
-// ── Store — Dictionary ───────────────────────────────────────────────────────
-ipcMain.handle('store:getDictionary',  ()    => store.get('dictionary', []))
-ipcMain.handle('store:saveDictionary', (_, d) => store.set('dictionary', d))
+// ── Store — Dictionary (stored as JSON string to avoid schema issues) ────────
+ipcMain.handle('store:getDictionary', () => {
+  try { return JSON.parse(store.get('dictionary_json', '[]')) } catch { return [] }
+})
+ipcMain.handle('store:saveDictionary', (_, d) => {
+  store.set('dictionary_json', JSON.stringify(d))
+})
 
-// ── Store — Snippets ─────────────────────────────────────────────────────────
-ipcMain.handle('store:getSnippets',  ()    => store.get('snippets', []))
-ipcMain.handle('store:saveSnippets', (_, s) => store.set('snippets', s))
+// ── Store — Snippets (stored as JSON string to avoid schema issues) ──────────
+ipcMain.handle('store:getSnippets', () => {
+  try { return JSON.parse(store.get('snippets_json', '[]')) } catch { return [] }
+})
+ipcMain.handle('store:saveSnippets', (_, s) => {
+  store.set('snippets_json', JSON.stringify(s))
+})
 
 // ── App lifecycle ────────────────────────────────────────────────────────────
 app.whenReady().then(() => {

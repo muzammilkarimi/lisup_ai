@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import LisupIcon from './LisupIcon.jsx'
 
 // ── Shared ─────────────────────────────────────────────────────────────────────
 
@@ -37,10 +38,12 @@ function Toggle({ checked, onChange, label, sub }) {
 
 function GeneralTab({ onSave }) {
   const [key, setKey]                = useState('')
+  const [userName, setUserName]      = useState('')
   const [autoEdit, setAutoEdit]      = useState(true)
   const [removeFillers, setFillers]  = useState(true)
   const [autoStart, setAutoStart]    = useState(false)
   const [defaultTone, setTone]       = useState('none')
+  const [language, setLanguage]      = useState('auto')
   const [saving, setSaving]          = useState(false)
   const [keyError, setKeyError]      = useState('')
 
@@ -53,6 +56,8 @@ function GeneralTab({ onSave }) {
       setFillers(s.removeFillers ?? true)
       setAutoStart(s.autoStart ?? false)
       setTone(s.defaultTone ?? 'none')
+      setLanguage(s.language ?? 'auto')
+      setUserName(s.userName ?? '')
     })
   }, [])
 
@@ -63,7 +68,7 @@ function GeneralTab({ onSave }) {
     setKeyError('')
     setSaving(true)
     try {
-      const settings = { autoEdit, removeFillers, autoStart, defaultTone }
+      const settings = { autoEdit, removeFillers, autoStart, defaultTone, language, userName: userName.trim() }
       await window.electronAPI.setApiKey(trimmed)
       await window.electronAPI.saveSettings(settings)
       onSave(settings)
@@ -108,6 +113,27 @@ function GeneralTab({ onSave }) {
         {keyError && <p className="text-[12px] mt-1" style={{ color: '#CB4F37' }}>{keyError}</p>}
       </div>
 
+      {/* Your Name */}
+      <div>
+        <SectionHeader>Your Name</SectionHeader>
+        <p className="text-[12.5px] mb-2" style={{ color: '#9A938A' }}>
+          Used in emails and letters — replaces "[Your Name]" automatically.
+        </p>
+        <input
+          type="text"
+          value={userName}
+          onChange={e => setUserName(e.target.value)}
+          placeholder="e.g. Muzammil Karimi"
+          className="w-full text-[13px] outline-none transition-colors"
+          style={{
+            background: '#F5F4F1', border: '1px solid #ECE7DF',
+            borderRadius: '11px', padding: '11px 14px', color: '#26231F',
+          }}
+          onFocus={e => { e.target.style.borderColor = '#E07B39' }}
+          onBlur={e => { e.target.style.borderColor = '#ECE7DF' }}
+        />
+      </div>
+
       {/* Processing */}
       <div>
         <SectionHeader>Processing</SectionHeader>
@@ -123,6 +149,37 @@ function GeneralTab({ onSave }) {
             sub="Strip um, uh, like, basically, you know before processing"
           />
         </div>
+      </div>
+
+      {/* Language */}
+      <div>
+        <SectionHeader>Speech language</SectionHeader>
+        <p className="text-[12px] mb-2" style={{ color: '#9A938A' }}>
+          Fix inconsistent detection by setting your language explicitly.
+        </p>
+        <select
+          value={language}
+          onChange={e => setLanguage(e.target.value)}
+          className="w-full text-[13px] outline-none rounded-btn"
+          style={{
+            background: '#F5F4F1', border: '1px solid #ECE7DF',
+            padding: '10px 14px', color: '#26231F', appearance: 'auto',
+          }}
+        >
+          <option value="auto">Auto-detect</option>
+          <option value="en">English</option>
+          <option value="hi">Hindi</option>
+          <option value="ur">Urdu</option>
+          <option value="ar">Arabic</option>
+          <option value="fr">French</option>
+          <option value="es">Spanish</option>
+          <option value="de">German</option>
+          <option value="pt">Portuguese</option>
+          <option value="ru">Russian</option>
+          <option value="zh">Chinese</option>
+          <option value="ja">Japanese</option>
+          <option value="ko">Korean</option>
+        </select>
       </div>
 
       {/* Default tone */}
@@ -152,7 +209,7 @@ function GeneralTab({ onSave }) {
         <Toggle
           checked={autoStart} onChange={setAutoStart}
           label="Start on Windows boot"
-          sub="Launch Suniye Ji automatically when you log in"
+          sub="Launch Lisup automatically when you log in"
         />
       </div>
 
@@ -174,9 +231,13 @@ function DictionaryTab() {
   const [entries, setEntries] = useState([])
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
+  const [error, setError]     = useState('')
 
   useEffect(() => {
-    window.electronAPI?.getDictionary().then(d => setEntries(d || []))
+    if (!window.electronAPI?.getDictionary) return
+    window.electronAPI.getDictionary()
+      .then(d => setEntries(d || []))
+      .catch(() => setError('Could not load dictionary.'))
   }, [])
 
   function addEntry() {
@@ -192,13 +253,23 @@ function DictionaryTab() {
   }
 
   async function handleSave() {
+    if (!window.electronAPI?.saveDictionary) {
+      setError('Restart the app to enable saving.')
+      return
+    }
     const valid = entries.filter(e => e.wrong.trim() && e.correct.trim())
     setSaving(true)
-    await window.electronAPI?.saveDictionary(valid)
-    setEntries(valid)
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    setError('')
+    try {
+      await window.electronAPI.saveDictionary(valid)
+      setEntries(valid)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      setError('Save failed. Try restarting the app.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -246,7 +317,7 @@ function DictionaryTab() {
 
       <button
         onClick={addEntry}
-        className="text-[12.5px] font-medium mb-4 flex items-center gap-1.5 hover:opacity-70 transition-opacity"
+        className="text-[12.5px] font-medium mb-3 flex items-center gap-1.5 hover:opacity-70 transition-opacity"
         style={{ color: '#E07B39' }}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -254,6 +325,8 @@ function DictionaryTab() {
         </svg>
         Add Word
       </button>
+
+      {error && <p className="text-[12px] mb-2" style={{ color: '#CB4F37' }}>{error}</p>}
 
       <button
         onClick={handleSave}
@@ -273,9 +346,13 @@ function SnippetsTab() {
   const [snippets, setSnippets] = useState([])
   const [saving, setSaving]     = useState(false)
   const [saved, setSaved]       = useState(false)
+  const [error, setError]       = useState('')
 
   useEffect(() => {
-    window.electronAPI?.getSnippets().then(s => setSnippets(s || []))
+    if (!window.electronAPI?.getSnippets) return
+    window.electronAPI.getSnippets()
+      .then(s => setSnippets(s || []))
+      .catch(() => setError('Could not load snippets.'))
   }, [])
 
   function addSnippet() {
@@ -291,13 +368,25 @@ function SnippetsTab() {
   }
 
   async function handleSave() {
-    const valid = snippets.filter(s => s.trigger.trim() && s.expansion.trim())
+    if (!window.electronAPI?.saveSnippets) {
+      setError('Restart the app to enable saving.')
+      return
+    }
+    const valid = snippets
+      .filter(s => s.trigger.trim() && s.expansion.trim())
+      .map(s => ({ trigger: s.trigger.trim(), expansion: s.expansion.trim() }))
     setSaving(true)
-    await window.electronAPI?.saveSnippets(valid)
-    setSnippets(valid)
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    setError('')
+    try {
+      await window.electronAPI.saveSnippets(valid)
+      setSnippets(valid)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      setError('Save failed. Try restarting the app.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -347,7 +436,7 @@ function SnippetsTab() {
 
       <button
         onClick={addSnippet}
-        className="text-[12.5px] font-medium mb-4 flex items-center gap-1.5 hover:opacity-70 transition-opacity"
+        className="text-[12.5px] font-medium mb-3 flex items-center gap-1.5 hover:opacity-70 transition-opacity"
         style={{ color: '#E07B39' }}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -355,6 +444,8 @@ function SnippetsTab() {
         </svg>
         Add Snippet
       </button>
+
+      {error && <p className="text-[12px] mb-2" style={{ color: '#CB4F37' }}>{error}</p>}
 
       <button
         onClick={handleSave}
@@ -387,11 +478,9 @@ export default function Settings({ onSave, onBack }) {
       {/* Header */}
       <div className="flex justify-between items-center" style={{ padding: '14px 18px 0' }}>
         <div className="flex items-center gap-2">
-          <div className="w-[22px] h-[22px] rounded-[6px] flex items-center justify-center" style={{ background: '#E07B39' }}>
-            <span className="text-white font-bold" style={{ fontSize: '11px' }}>स</span>
-          </div>
-          <span className="text-[13px] font-semibold" style={{ color: '#A29B91' }}>
-            Suniye <span style={{ color: '#E07B39' }}>Ji</span>
+          <LisupIcon size={22} />
+          <span className="text-[13px] font-semibold" style={{ color: '#1A1A1A' }}>
+            Lis<span style={{ color: '#E07B39' }}>up</span>
           </span>
         </div>
         {onBack && (
@@ -425,8 +514,15 @@ export default function Settings({ onSave, onBack }) {
         ))}
       </div>
 
-      {/* Tab content */}
-      <div style={{ padding: '16px 18px 20px' }}>
+      {/* Tab content — scrollable so it never overflows the screen */}
+      <div
+        className="panel-scroll"
+        style={{
+          padding: '16px 18px 20px',
+          overflowY: 'auto',
+          maxHeight: 'calc(100vh - 90px)',
+        }}
+      >
         {activeTab === 'General'    && <GeneralTab    onSave={onSave} />}
         {activeTab === 'Dictionary' && <DictionaryTab />}
         {activeTab === 'Snippets'   && <SnippetsTab />}

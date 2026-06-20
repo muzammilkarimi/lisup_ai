@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Widget from './components/Widget.jsx'
 import Settings from './components/Settings.jsx'
 import { useRecorder } from './hooks/useRecorder.js'
@@ -25,11 +25,14 @@ const DEFAULT_SETTINGS = {
   autoEdit: true,
   removeFillers: true,
   defaultTone: 'none',
+  language: 'auto',
+  userName: '',
 }
 
 export default function App() {
   const [status, setStatus]             = useState('idle')
   const [mode, setMode]                 = useState('transcribe') // transcribe | command | intent
+  const [manualMode, setManualMode]     = useState('auto')       // auto | transcribe | command
   const [result, setResult]             = useState('')
   const [error, setError]               = useState('')
   const [detectedCommand, setDetectedCmd] = useState(null)
@@ -44,18 +47,8 @@ export default function App() {
   const statusRef     = useRef('idle')
 
   const { startRecording, stopRecording } = useRecorder()
-  const { clipboardText, readClipboard }  = useClipboard()
+  const { clipboardText, readClipboard, clearClipboard } = useClipboard()
   const rootRef = useRef(null)
-
-  // Dynamic window resize
-  useLayoutEffect(() => {
-    if (!window.electronAPI?.resizeWindow) return
-    const el = rootRef.current
-    if (!el) return
-    const ro = new ResizeObserver(() => window.electronAPI.resizeWindow(el.offsetHeight))
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
 
   // Bootstrap: load everything from store
   useEffect(() => {
@@ -88,6 +81,7 @@ export default function App() {
         setError('')
         setDetectedCmd(null)
         setActiveTone(appSettings.defaultTone || 'none')
+        setManualMode('auto')
         baseResultRef.current = ''
       }
     }
@@ -140,7 +134,7 @@ export default function App() {
       if (!apiKey) { setShowSettings(true); setStatus('idle'); return }
 
       // STEP 3: Transcribe
-      const rawTranscript = await transcribeAudio(blob, apiKey)
+      const rawTranscript = await transcribeAudio(blob, apiKey, appSettings.language || 'auto')
       if (!rawTranscript || rawTranscript.trim().length === 0) {
         setStatus('error'); setError("Couldn't hear anything. Try again."); return
       }
@@ -169,12 +163,17 @@ export default function App() {
       const detection = detectCommand(cleanTranscript)
       setDetectedCmd(detection)
 
-      // STEP 7: Determine mode
+      // STEP 7: Determine mode — manual selection overrides auto-detection
       const freshClipboard = await readClipboard()
       let currentMode
-      if (detection.type === 'slash')               currentMode = 'command'
-      else if (freshClipboard && freshClipboard.trim()) currentMode = 'intent'
-      else                                           currentMode = 'transcribe'
+      if (manualMode === 'command') {
+        currentMode = detection.type === 'slash' ? 'command' : 'intent'
+      } else if (manualMode === 'transcribe') {
+        currentMode = 'transcribe'
+      } else {
+        // auto: default to transcribe
+        currentMode = 'transcribe'
+      }
       setMode(currentMode)
 
       let processedResult
@@ -198,7 +197,16 @@ export default function App() {
         }
       } else {
         // STEP 8B: Command / Intent
-        processedResult = await processWithAI(freshClipboard, detection.instruction, null, apiKey)
+        // Resolve user name: settings field first, then fall back to a snippet whose
+        // trigger looks like a name reference ("name", "my name", "my full name")
+        const NAME_TRIGGERS = ['my full name', 'my name', 'full name', 'name']
+        const nameFromSnippet = NAME_TRIGGERS.reduce((found, t) => {
+          if (found) return found
+          const s = snippetsRef.current.find(sn => sn.trigger?.trim().toLowerCase() === t)
+          return s ? s.expansion : null
+        }, null)
+        const resolvedName = settings.userName || nameFromSnippet || ''
+        processedResult = await processWithAI(freshClipboard, detection.instruction, null, apiKey, resolvedName)
       }
 
       // STEP 9: Personal dictionary
@@ -266,7 +274,14 @@ export default function App() {
       setStatus('thinking')
       setError('')
 
-      const res = await processWithAI(freshClipboard, slashCmd, null, apiKey)
+      const NAME_TRIGGERS = ['my full name', 'my name', 'full name', 'name']
+      const nameFromSnippet = NAME_TRIGGERS.reduce((found, t) => {
+        if (found) return found
+        const s = snippetsRef.current.find(sn => sn.trigger?.trim().toLowerCase() === t)
+        return s ? s.expansion : null
+      }, null)
+      const resolvedName = appSettings.userName || nameFromSnippet || ''
+      const res = await processWithAI(freshClipboard, slashCmd, null, apiKey, resolvedName)
       const final = applyDictionary(res, dictionaryRef.current)
       baseResultRef.current = final
       setResult(final)
@@ -294,17 +309,25 @@ export default function App() {
     window.electronAPI?.hideWidget()
   }, [result])
 
-  // ── Settings saved ─────────────────────────────────────────────────────────
+  // ── Settings closed (back or save) ────────────────────────────────────────
+
+  const reloadUserData = useCallback(() => {
+    if (!window.electronAPI) return
+    window.electronAPI.getDictionary().then(d => { dictionaryRef.current = d || [] })
+    window.electronAPI.getSnippets().then(s => { snippetsRef.current   = s || [] })
+  }, [])
 
   const handleSettingsSaved = useCallback((newSettings) => {
     setAppSettings({ ...DEFAULT_SETTINGS, ...newSettings })
     setHasApiKey(true)
     setShowSettings(false)
-    if (window.electronAPI) {
-      window.electronAPI.getDictionary().then(d => { dictionaryRef.current = d || [] })
-      window.electronAPI.getSnippets().then(s => { snippetsRef.current   = s || [] })
-    }
-  }, [])
+    reloadUserData()
+  }, [reloadUserData])
+
+  const handleBackFromSettings = useCallback(() => {
+    setShowSettings(false)
+    reloadUserData()
+  }, [reloadUserData])
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -313,7 +336,7 @@ export default function App() {
       <div ref={rootRef} style={{ width: 400 }}>
         <Settings
           onSave={handleSettingsSaved}
-          onBack={hasApiKey ? () => setShowSettings(false) : null}
+          onBack={hasApiKey ? handleBackFromSettings : null}
         />
       </div>
     )
@@ -324,6 +347,7 @@ export default function App() {
       <Widget
         status={status}
         mode={mode}
+        manualMode={manualMode}
         clipboardText={clipboardText}
         result={result}
         error={error}
@@ -333,11 +357,14 @@ export default function App() {
         onStopRecording={handleStopRecording}
         onInject={handleInject}
         onCopy={handleCopy}
+        onNew={() => { setStatus('idle'); setResult(''); setActiveTone(null) }}
         onRunCommand={handleRunCommand}
         onApplyTone={handleApplyTone}
+        onSetManualMode={(m) => setManualMode(prev => prev === m ? 'auto' : m)}
         onHide={() => window.electronAPI?.hideWidget()}
         onOpenSettings={() => setShowSettings(true)}
         onRefreshClipboard={readClipboard}
+        onClearClipboard={clearClipboard}
         onTryAgain={handleStartRecording}
       />
     </div>

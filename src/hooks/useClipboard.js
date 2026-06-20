@@ -16,5 +16,7 @@ export function useClipboard() {
     return ''
   }, [])
 
-  return { clipboardText, readClipboard }
+  const clearClipboard = useCallback(() => setClipboardText(''), [])
+
+  return { clipboardText, readClipboard, clearClipboard }
 }

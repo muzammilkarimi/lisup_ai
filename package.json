@@ -1,5 +1,5 @@
 {
-  "name": "voicecommand",
+  "name": "lisup",
   "version": "0.1.0",
   "description": "Voice-powered AI writing assistant for Windows",
   "main": "electron/main.js",
@@ -27,8 +27,8 @@
     "wait-on": "^7.0.0"
   },
   "build": {
-    "appId": "com.voicecommand.app",
-    "productName": "VoiceCommand",
+    "appId": "com.lisup.app",
+    "productName": "Lisup",
     "win": {
       "target": "nsis",
       "icon": "assets/icon.ico"

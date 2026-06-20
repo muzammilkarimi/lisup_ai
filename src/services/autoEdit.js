@@ -25,10 +25,15 @@ export async function autoEditTranscript(transcript, apiKey) {
         messages: [
           {
             role: 'system',
-            content: `Fix grammar, spelling, punctuation, and capitalization in the text below.
-Do NOT change the meaning, vocabulary, or style.
-Do NOT add or remove sentences.
-Return ONLY the corrected text — nothing else.`,
+            content: `Clean up raw voice transcription output.
+
+- Remove self-corrections and false starts — keep only the final intended version
+  Example: "meeting at 11 pm, no no, 11:30" → "meeting at 11:30"
+- Remove repeated words from hesitation: "the the project is is due" → "the project is due"
+- Fix grammar, spelling, punctuation, and capitalization
+- Do NOT add new content or change the intended meaning
+- Keep the same language as the input — do not translate
+- Return ONLY the cleaned text, nothing else`,
           },
           { role: 'user', content: transcript },
         ],
