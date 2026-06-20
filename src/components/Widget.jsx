@@ -1,15 +1,31 @@
 import { QUICK_COMMANDS } from '../services/commands.js'
 
-// Shared header used by all views
+const TONES = [
+  { key: 'formal',  label: 'Formal'  },
+  { key: 'casual',  label: 'Casual'  },
+  { key: 'funny',   label: 'Funny'   },
+  { key: 'polite',  label: 'Polite'  },
+  { key: 'social',  label: 'Social'  },
+]
+
+// ── Shared header ──────────────────────────────────────────────────────────────
+
 function Header({ onHide, onOpenSettings }) {
   return (
     <div className="flex justify-between items-center" style={{ padding: '17px 20px 0' }}>
       <button
         onClick={onOpenSettings}
-        className="text-[13px] font-semibold tracking-[-0.01em] hover:opacity-70 transition-opacity"
-        style={{ color: '#A29B91' }}
+        className="flex items-center gap-2 hover:opacity-70 transition-opacity"
       >
-        Suniye Ji
+        <div
+          className="w-[22px] h-[22px] rounded-[6px] flex items-center justify-center flex-shrink-0"
+          style={{ background: '#E07B39' }}
+        >
+          <span className="text-white font-bold" style={{ fontSize: '11px', lineHeight: 1 }}>स</span>
+        </div>
+        <span className="text-[13px] font-semibold" style={{ color: '#A29B91' }}>
+          Suniye <span style={{ color: '#E07B39' }}>Ji</span>
+        </span>
       </button>
       <button
         onClick={onHide}
@@ -25,7 +41,8 @@ function Header({ onHide, onOpenSettings }) {
   )
 }
 
-// 📋 Clipboard pill shown in Idle / Listening / Thinking
+// ── Clipboard pill ─────────────────────────────────────────────────────────────
+
 function ClipboardPill({ text, onRefresh }) {
   return (
     <div className="flex items-center gap-1.5 mx-5 mt-3">
@@ -35,7 +52,7 @@ function ClipboardPill({ text, onRefresh }) {
         title={text || ''}
       >
         {text && text.trim()
-          ? <>📋 {text.slice(0, 42)}{text.length > 42 ? '…' : ''}</>
+          ? <>📋 {text.slice(0, 44)}{text.length > 44 ? '…' : ''}</>
           : <span style={{ color: '#C5BFB8' }}>📋 Copy text, then speak a command</span>
         }
       </div>
@@ -54,22 +71,17 @@ function ClipboardPill({ text, onRefresh }) {
   )
 }
 
-// Command chips row
-function ChipRow({ onRunCommand, disabled }) {
+// ── Command chips (idle) ───────────────────────────────────────────────────────
+
+function ChipRow({ onRunCommand }) {
   return (
     <div className="flex flex-wrap justify-center gap-[6px] px-5 pb-5 mt-4">
       {QUICK_COMMANDS.map((cmd) => (
         <button
           key={cmd}
           onClick={() => onRunCommand(cmd)}
-          disabled={disabled}
-          className="text-[11px] font-medium rounded-chip transition-all disabled:opacity-40"
-          style={{
-            color: '#9A938A',
-            border: '1px solid #ECE7DF',
-            padding: '5px 11px',
-            background: 'white',
-          }}
+          className="text-[11px] font-medium rounded-chip transition-all"
+          style={{ color: '#9A938A', border: '1px solid #ECE7DF', padding: '5px 11px', background: 'white' }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = '#E07B39'; e.currentTarget.style.color = '#C0631F' }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = '#ECE7DF'; e.currentTarget.style.color = '#9A938A' }}
         >
@@ -80,20 +92,48 @@ function ChipRow({ onRunCommand, disabled }) {
   )
 }
 
-// ── Views ──────────────────────────────────────────────────────────────────
+// ── Tone chips (done + transcribe mode) ───────────────────────────────────────
+
+function ToneChips({ activeTone, onApplyTone }) {
+  return (
+    <div className="px-5 pb-5 mt-0">
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-[11.5px]" style={{ color: '#BDB6AC' }}>Tone:</span>
+        {TONES.map(({ key, label }) => {
+          const active = activeTone === key
+          return (
+            <button
+              key={key}
+              onClick={() => onApplyTone(key)}
+              className="text-[11.5px] font-medium rounded-chip transition-all"
+              style={{
+                padding: '4px 10px',
+                background: active ? '#E07B39' : 'white',
+                color: active ? 'white' : '#9A938A',
+                border: `1px solid ${active ? '#E07B39' : '#ECE7DF'}`,
+              }}
+            >
+              {label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── State views ────────────────────────────────────────────────────────────────
 
 function IdleView({ onStart }) {
   return (
     <div className="flex flex-col items-center pt-6 pb-2">
-      {/* Mic button */}
       <button
         onClick={onStart}
         className="w-[74px] h-[74px] rounded-full flex items-center justify-center transition-transform active:scale-95"
         style={{ background: '#23201C', boxShadow: '0 8px 20px -8px rgba(35,32,28,.55)' }}
       >
-        <MicIcon stroke="white" />
+        <MicIcon />
       </button>
-      {/* Hint */}
       <p className="mt-[14px] text-[13.5px] font-medium" style={{ color: '#9A938A' }}>
         Press to speak
       </p>
@@ -104,39 +144,22 @@ function IdleView({ onStart }) {
 function ListeningView({ onStop }) {
   return (
     <div className="flex flex-col items-center pt-6 pb-2">
-      {/* Mic + pulse rings */}
       <div className="relative flex items-center justify-center w-[74px] h-[74px]">
-        {/* Ring A */}
-        <span
-          className="absolute inset-0 rounded-full animate-ring-a"
-          style={{ background: '#E07B39' }}
-        />
-        {/* Ring B */}
-        <span
-          className="absolute inset-0 rounded-full animate-ring-b"
-          style={{ background: '#E07B39' }}
-        />
+        <span className="absolute inset-0 rounded-full animate-ring-a" style={{ background: '#E07B39' }} />
+        <span className="absolute inset-0 rounded-full animate-ring-b" style={{ background: '#E07B39' }} />
         <button
           onClick={onStop}
           className="relative w-[74px] h-[74px] rounded-full flex items-center justify-center z-10 transition-transform active:scale-95"
           style={{ background: '#E07B39', boxShadow: '0 8px 22px -8px rgba(224,123,57,.6)' }}
         >
-          <MicIcon stroke="white" />
+          <MicIcon />
         </button>
       </div>
-      <p className="mt-[22px] text-[14px] font-semibold" style={{ color: '#26231F' }}>
-        Listening…
-      </p>
-      {/* Stop button */}
+      <p className="mt-[22px] text-[14px] font-semibold" style={{ color: '#26231F' }}>Listening…</p>
       <button
         onClick={onStop}
         className="mt-3 flex items-center gap-1.5 text-[12.5px] font-medium rounded-chip transition-opacity hover:opacity-70"
-        style={{
-          background: '#F5F4F1',
-          border: '1px solid #ECE7DF',
-          color: '#7A746B',
-          padding: '6px 14px',
-        }}
+        style={{ background: '#F5F4F1', border: '1px solid #ECE7DF', color: '#7A746B', padding: '6px 14px' }}
       >
         <svg width="10" height="10" viewBox="0 0 10 10" fill="#7A746B">
           <rect x="1" y="1" width="8" height="8" rx="1.5" />
@@ -147,16 +170,18 @@ function ListeningView({ onStop }) {
   )
 }
 
-function ThinkingView({ detectedCommand }) {
+function ThinkingView({ detectedCommand, mode }) {
+  const modeLabels = {
+    transcribe: '🎙️ Cleaning transcript…',
+    command:    `⚡ Running ${detectedCommand?.command || 'command'}…`,
+    intent:     '🧠 Understanding intent…',
+  }
   const label = detectedCommand
-    ? (detectedCommand.command
-        ? `${detectedCommand.command}${detectedCommand.type === 'intent' ? '' : ''}`
-        : detectedCommand.instruction?.slice(0, 28))
+    ? (detectedCommand.command || detectedCommand.instruction?.slice(0, 28))
     : null
 
   return (
     <div className="flex flex-col items-center pt-8 pb-4 px-5">
-      {/* Bouncing dots */}
       <div className="flex gap-[6px]">
         {[0, 1, 2].map(i => (
           <span
@@ -166,12 +191,11 @@ function ThinkingView({ detectedCommand }) {
           />
         ))}
       </div>
-      <p className="mt-4 text-[14px] font-semibold" style={{ color: '#26231F' }}>
-        Processing…
-      </p>
+      <p className="mt-4 text-[14px] font-semibold" style={{ color: '#26231F' }}>Processing…</p>
+      <p className="mt-1 text-[12px]" style={{ color: '#9A938A' }}>{modeLabels[mode] || '🧠 Understanding…'}</p>
       {label && (
         <div
-          className="mt-3 flex items-center gap-2 rounded-chip px-3 py-1.5 text-[12px]"
+          className="mt-2 flex items-center gap-2 rounded-chip px-3 py-1.5 text-[12px]"
           style={{ background: '#FBF1E9', border: '1px solid #F4DEC9' }}
         >
           <span style={{ color: '#9A938A' }}>Detected</span>
@@ -184,28 +208,20 @@ function ThinkingView({ detectedCommand }) {
 
 function DoneView({ result, onInject, onCopy }) {
   return (
-    <div className="px-5 pt-5 pb-5">
-      {/* Result box */}
+    <div className="px-5 pt-5 pb-3">
       <div
-        className="text-[13.5px] leading-[1.62] rounded-inner overflow-y-auto result-scroll"
-        style={{
-          background: '#F5F4F1',
-          color: '#33302B',
-          padding: '15px 16px',
-          maxHeight: '148px',
-        }}
+        className="text-[13.5px] leading-[1.62] rounded-inner overflow-y-auto"
+        style={{ background: '#F5F4F1', color: '#33302B', padding: '15px 16px', maxHeight: '148px' }}
       >
         {result}
       </div>
-      {/* Buttons */}
       <div className="flex gap-[10px] mt-3">
         <button
           onClick={onInject}
           className="flex-1 flex items-center justify-center gap-1.5 text-[13px] font-semibold rounded-btn transition-opacity hover:opacity-80 active:scale-[.98]"
           style={{ background: '#23201C', color: 'white', padding: '10px 0' }}
         >
-          Inject
-          <span style={{ opacity: 0.6 }}>↵</span>
+          Inject <span style={{ opacity: 0.6 }}>↵</span>
         </button>
         <button
           onClick={onCopy}
@@ -219,8 +235,7 @@ function DoneView({ result, onInject, onCopy }) {
           Copy
         </button>
       </div>
-      {/* Caption */}
-      <p className="text-center mt-2.5 text-[11.5px]" style={{ color: '#A9A299' }}>
+      <p className="text-center mt-2 text-[11.5px]" style={{ color: '#A9A299' }}>
         Will paste into your active app
       </p>
     </div>
@@ -230,11 +245,7 @@ function DoneView({ result, onInject, onCopy }) {
 function ErrorView({ error, onTryAgain }) {
   return (
     <div className="flex flex-col items-center text-center px-6 pt-8 pb-8 gap-3">
-      {/* Error icon */}
-      <div
-        className="w-[52px] h-[52px] rounded-full flex items-center justify-center flex-shrink-0"
-        style={{ background: '#FBECE8' }}
-      >
+      <div className="w-[52px] h-[52px] rounded-full flex items-center justify-center" style={{ background: '#FBECE8' }}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#CB4F37" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
           <line x1="12" y1="9" x2="12" y2="13" />
@@ -242,11 +253,9 @@ function ErrorView({ error, onTryAgain }) {
         </svg>
       </div>
       <div>
-        <p className="text-[14px] font-semibold mb-1" style={{ color: '#26231F' }}>
-          Couldn't hear anything
-        </p>
+        <p className="text-[14px] font-semibold mb-1" style={{ color: '#26231F' }}>Something went wrong</p>
         <p className="text-[13px] leading-[1.55]" style={{ color: '#9A938A' }}>
-          {error || "Your mic stayed quiet. Check it's not muted and try again."}
+          {error || "Couldn't hear anything. Check your mic and try again."}
         </p>
       </div>
       <button
@@ -264,29 +273,20 @@ function ErrorView({ error, onTryAgain }) {
   )
 }
 
-// ── Root ───────────────────────────────────────────────────────────────────
+// ── Root ───────────────────────────────────────────────────────────────────────
 
 export default function Widget({
-  status,
-  clipboardText,
-  result,
-  error,
-  detectedCommand,
-  onStartRecording,
-  onStopRecording,
-  onInject,
-  onCopy,
-  onRunCommand,
-  onHide,
-  onOpenSettings,
-  onRefreshClipboard,
-  onTryAgain,
+  status, mode, clipboardText, result, error,
+  detectedCommand, activeTone,
+  onStartRecording, onStopRecording, onInject, onCopy,
+  onRunCommand, onApplyTone, onHide, onOpenSettings,
+  onRefreshClipboard, onTryAgain,
 }) {
-  const showPill = status !== 'done' && status !== 'error'
+  const showClipPill = status !== 'done' && status !== 'error'
 
   return (
     <div
-      className="w-[380px] rounded-widget select-none overflow-hidden"
+      className="w-[400px] rounded-widget select-none overflow-hidden"
       style={{
         background: '#FFFFFF',
         border: '1px solid #ECE8E1',
@@ -295,31 +295,40 @@ export default function Widget({
     >
       <Header onHide={onHide} onOpenSettings={onOpenSettings} />
 
-      {showPill && (
+      {showClipPill && (
         <ClipboardPill text={clipboardText} onRefresh={onRefreshClipboard} />
       )}
 
       {status === 'idle' && (
         <>
           <IdleView onStart={onStartRecording} />
-          <ChipRow onRunCommand={onRunCommand} disabled={false} />
+          <ChipRow onRunCommand={onRunCommand} />
         </>
       )}
+
       {status === 'listening' && (
         <>
           <ListeningView onStop={onStopRecording} />
           <div className="pb-5" />
         </>
       )}
+
       {status === 'thinking' && (
         <>
-          <ThinkingView detectedCommand={detectedCommand} />
+          <ThinkingView detectedCommand={detectedCommand} mode={mode} />
           <div className="pb-2" />
         </>
       )}
+
       {status === 'done' && (
-        <DoneView result={result} onInject={onInject} onCopy={onCopy} />
+        <>
+          <DoneView result={result} onInject={onInject} onCopy={onCopy} />
+          {mode === 'transcribe' && (
+            <ToneChips activeTone={activeTone} onApplyTone={onApplyTone} />
+          )}
+        </>
       )}
+
       {status === 'error' && (
         <ErrorView error={error} onTryAgain={onTryAgain} />
       )}
@@ -327,10 +336,9 @@ export default function Widget({
   )
 }
 
-// Shared mic SVG
-function MicIcon({ stroke = 'white' }) {
+function MicIcon() {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <rect x="9" y="2" width="6" height="12" rx="3" />
       <path d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6" />
     </svg>

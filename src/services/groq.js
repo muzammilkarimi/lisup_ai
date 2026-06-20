@@ -7,29 +7,34 @@ export async function transcribeAudio(audioBlob, apiKey) {
   formData.append('model', 'whisper-large-v3-turbo')
   formData.append('response_format', 'text')
 
-  const response = await fetch(`${GROQ_BASE}/audio/transcriptions`, {
+  const res = await fetch(`${GROQ_BASE}/audio/transcriptions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}` },
     body: formData,
   })
 
-  if (response.status === 429) throw new Error('RATE_LIMIT')
-  if (response.status >= 500) throw new Error('SERVER_ERROR')
-  if (!response.ok) throw new Error(`Transcription failed: ${response.status}`)
+  if (res.status === 429) throw new Error('RATE_LIMIT')
+  if (res.status >= 500) throw new Error('SERVER_ERROR')
+  if (!res.ok) throw new Error(`Transcription failed: ${res.status}`)
 
-  const text = await response.text()
-  return text.trim()
+  return (await res.text()).trim()
 }
 
-export async function processCommand(clipboardText, userCommand, apiKey) {
+// tone: 'formal' | 'casual' | 'funny' | 'polite' | 'social' | null
+export async function processWithAI(clipboardText, instruction, tone, apiKey) {
+  const toneInstruction = tone && tone !== 'none'
+    ? `\nApply a ${tone === 'social' ? 'social-media-post' : tone} tone to the output.`
+    : ''
+
   const systemPrompt = `You are a voice-powered writing assistant embedded in a desktop widget.
-The user has selected some text (clipboard context) and spoken a voice command.
-Produce ONLY the output text — no explanations, no preamble, no markdown unless explicitly asked.
-Return the final text that will be injected directly into the user's text field.`
+Produce ONLY the output text. No explanations, no preamble, no markdown formatting unless explicitly asked.
+The output will be injected directly into the user's active text field.${toneInstruction}`
 
-  const userMessage = buildUserMessage(clipboardText, userCommand)
+  const userMessage = clipboardText && clipboardText.trim()
+    ? `Context (selected text):\n"${clipboardText}"\n\nUser command: "${instruction}"`
+    : `User command (no clipboard context): "${instruction}"`
 
-  const response = await fetch(`${GROQ_BASE}/chat/completions`, {
+  const res = await fetch(`${GROQ_BASE}/chat/completions`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -46,17 +51,13 @@ Return the final text that will be injected directly into the user's text field.
     }),
   })
 
-  if (response.status === 429) throw new Error('RATE_LIMIT')
-  if (response.status >= 500) throw new Error('SERVER_ERROR')
-  if (!response.ok) throw new Error(`Command failed: ${response.status}`)
+  if (res.status === 429) throw new Error('RATE_LIMIT')
+  if (res.status >= 500) throw new Error('SERVER_ERROR')
+  if (!res.ok) throw new Error(`AI processing failed: ${res.status}`)
 
-  const data = await response.json()
+  const data = await res.json()
   return data.choices[0].message.content.trim()
 }
 
-function buildUserMessage(clipboardText, userCommand) {
-  if (clipboardText && clipboardText.trim().length > 0) {
-    return `Context (selected text):\n"${clipboardText}"\n\nUser command: "${userCommand}"`
-  }
-  return `User command (no context selected): "${userCommand}"`
-}
+// Alias kept for any legacy callers
+export const processCommand = processWithAI
