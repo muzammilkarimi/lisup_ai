@@ -148,8 +148,8 @@ export default function App() {
         setStatus('error'); setError("Didn't catch that. Speak a bit longer."); return
       }
 
-      // STEP 4: Filler removal (local, instant)
-      const settings = await window.electronAPI?.getSettings() ?? appSettings
+      // STEP 4: Filler removal (local, instant) — use already-loaded appSettings
+      const settings = appSettings
       const cleanTranscript = settings.removeFillers
         ? removeFillersLocally(rawTranscript)
         : rawTranscript
