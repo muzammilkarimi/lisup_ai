@@ -1,20 +1,29 @@
-# Suniye Ji
+# Lisup — Voice AI Desktop Widget
 
-> *"It's easy."* — Voice-powered AI writing assistant for Windows.
+> Voice AI · Listen Up
 
-A floating desktop widget that lives in your system tray. Press **Alt + Space** from any app, speak a command, and the result is injected directly into whatever you were typing.
-
-![Widget states: Idle → Listening → Thinking → Done](https://placehold.co/760x200/F5F4F1/9A938A?text=Idle+→+Listening+→+Thinking+→+Done&font=inter)
+A floating Windows desktop widget that turns your voice into polished text and AI-powered writing — injected directly into any app.
 
 ---
 
 ## How it works
 
-1. Copy any text in another app (email, browser, Slack, Word)
-2. Press **Alt + Space** — the widget appears bottom-right
-3. Speak a command: *"reply formally"*, *"make this shorter"*, or tap a chip like `/fix`
-4. Widget transcribes → detects intent → calls Groq AI → shows result
-5. Click **Inject** — result is pasted into your active app automatically
+1. Press **Alt + Space** — the widget appears bottom-right
+2. Speak naturally — transcribe, give a command, or trigger a snippet
+3. Click **Inject** — result is pasted into whatever app you were typing in
+
+---
+
+## Features
+
+- **Transcribe** — Clean up what you said (grammar fixed, fillers removed, self-corrections cleaned up)
+- **Command mode** — Copy text, speak a command ("make this formal", "summarise", "translate") — AI rewrites it
+- **Snippets** — Short trigger phrases that expand instantly, no AI needed ("my email" → full address)
+- **Personal dictionary** — Auto-correct words Whisper gets wrong
+- **5 tones** — Rephrase any result as Formal, Casual, Funny, Polite, or Social
+- **Your name** — Set once in Settings; all emails and letters sign with it automatically
+- **Inject / Copy** — Paste result directly into any active app or copy to clipboard
+- **Auto-start** — Launch with Windows login
 
 ---
 
@@ -23,15 +32,14 @@ A floating desktop widget that lives in your system tray. Press **Alt + Space** 
 | Layer | Choice |
 |---|---|
 | Shell | Electron 27 |
-| UI | React 18 + Vite + Tailwind CSS v3 |
-| Voice capture | Web Audio API + MediaRecorder (built into Chromium) |
+| UI | React 18 + Vite 5 + Tailwind CSS v3 |
 | Transcription | Groq API — `whisper-large-v3-turbo` |
-| AI commands | Groq API — `llama-3.3-70b-versatile` |
-| Text injection | `@jitsi/robotjs` (Ctrl+V simulation) |
+| AI | Groq API — `llama-3.3-70b-versatile` |
+| Text injection | `@jitsi/robotjs` |
 | Global hotkey | Electron `globalShortcut` |
-| Config storage | `electron-store` |
+| Storage | `electron-store` (saved to `AppData/Lisup/`) |
 
-Everything runs locally except the two Groq API calls. No database, no server, no paid services.
+Everything runs locally except the two Groq API calls. No database, no server.
 
 ---
 
@@ -40,15 +48,14 @@ Everything runs locally except the two Groq API calls. No database, no server, n
 ### 1. Clone & install
 
 ```bash
-git clone https://github.com/muzammilkarimi/suniyeji_ai.git
-cd suniyeji_ai
+git clone https://github.com/muzammilkarimi/lisup_ai.git
+cd lisup_ai
 npm install
 ```
 
 ### 2. Get a free Groq API key
 
-Sign up at **[console.groq.com](https://console.groq.com)** — no credit card required.  
-Free tier: 2,000 Whisper requests/day + 14,400 LLM requests/day.
+Sign up at **[console.groq.com](https://console.groq.com)** — no credit card required.
 
 ### 3. Run
 
@@ -56,37 +63,41 @@ Free tier: 2,000 Whisper requests/day + 14,400 LLM requests/day.
 npm run dev
 ```
 
-On first launch the widget will ask for your Groq API key. Paste it and click **Save & Start**.
+On first launch the Settings screen opens. Paste your Groq API key and hit **Save**.
 
-> **Note:** If you're running from a VS Code integrated terminal, use the provided launcher scripts directly to avoid the `ELECTRON_RUN_AS_NODE` conflict:
+> If you're running from a VS Code integrated terminal, use the launcher scripts directly:
 > ```bash
 > # Terminal 1
 > npx vite
->
 > # Terminal 2 (after Vite is ready)
 > .\start-electron-dev.bat
 > ```
 
 ---
 
-## Commands
+## Usage
 
-Speak naturally or use a slash command — both work.
-
-| Chip / spoken | What it does |
+| Action | How |
 |---|---|
-| `/reply` | Writes a professional reply to the copied message |
-| `/fix` | Fixes grammar, spelling, and punctuation |
-| `/formal` | Rewrites in a formal, professional tone |
-| `/summarize` | Condenses to 2–3 sentences |
-| `/translate` | Translates to English (or Hindi if already English) |
-| `/casual` | Rewrites in a casual, friendly tone |
-| `/shorter` | Makes it more concise |
-| `/longer` | Expands with more detail |
-| `/bullet` | Converts to a bullet list |
-| `/email` | Reformats as a professional email |
-| `/tweet` | Rewrites as a tweet under 280 characters |
-| `/explain` | Explains in simple terms |
+| Show / hide widget | `Alt + Space` |
+| Start / stop recording | Click the mic button |
+| Inject result into active app | Click **Inject** |
+| Copy result | Click **Copy** |
+| New recording | Click **↑** (back button in done state) |
+| Clear clipboard context | Click **×** on the clipboard pill |
+| Open settings | Click the Lisup logo |
+
+### Modes
+
+| Mode | When to use |
+|---|---|
+| **T** (Transcribe) | Just clean up what you said |
+| **C** (Command) | Use clipboard text as context for AI commands |
+| Neither | Defaults to Transcribe |
+
+### Quick command chips
+
+`/reply` `/fix` `/formal` `/summarize` `/translate` `/casual` `/shorter` `/longer` `/bullet` `/email` `/tweet` `/explain`
 
 Natural language also works: *"make this sound more confident"*, *"translate to Urdu"*, *"add a subject line"*.
 
@@ -96,8 +107,8 @@ Natural language also works: *"make this sound more confident"*, *"translate to 
 
 ```bash
 npm run dev       # Vite dev server + Electron with hot reload
-npm run preview   # Build then launch (no hot reload)
-npm run build     # Build Vite + package Windows .exe with electron-builder
+npm run preview   # Build then launch
+npm run build     # Build Vite + package Windows .exe via electron-builder
 ```
 
 ---
@@ -105,28 +116,31 @@ npm run build     # Build Vite + package Windows .exe with electron-builder
 ## Project structure
 
 ```
-suniyeji_ai/
+lisup_ai/
 ├── electron/
-│   ├── main.js          # App lifecycle, IPC handlers, window setup
-│   ├── preload.js       # Secure contextBridge API exposed to renderer
-│   ├── hotkey.js        # Alt+Space global shortcut
-│   ├── tray.js          # System tray icon + context menu
-│   ├── injector.js      # Text injection via robotjs (Ctrl+V)
-│   └── store.js         # electron-store config (API key)
+│   ├── main.js            # App lifecycle, IPC handlers, window setup
+│   ├── preload.js         # Context bridge (secure IPC to renderer)
+│   ├── store.js           # electron-store config (AppData/Lisup/)
+│   ├── hotkey.js          # Alt+Space global shortcut
+│   ├── tray.js            # System tray icon + context menu
+│   ├── injector.js        # Text injection via robotjs
+│   └── windows-focus.js   # Windows API focus management (SetForegroundWindow)
 ├── src/
-│   ├── App.jsx          # State machine + all pipeline logic
+│   ├── App.jsx            # Full pipeline: record → transcribe → AI → result
 │   ├── components/
-│   │   ├── Widget.jsx   # All 5 widget states (Idle/Listening/Thinking/Done/Error)
-│   │   └── Settings.jsx # First-run API key setup screen
+│   │   ├── Widget.jsx     # Floating widget (Idle / Listening / Thinking / Done / Error)
+│   │   ├── Settings.jsx   # 3-tab settings (General / Dictionary / Snippets)
+│   │   └── LisupIcon.jsx  # SVG logo component
 │   ├── hooks/
-│   │   ├── useRecorder.js   # MediaRecorder voice capture
-│   │   └── useClipboard.js  # IPC clipboard bridge
+│   │   ├── useRecorder.js    # MediaRecorder voice capture
+│   │   └── useClipboard.js   # Clipboard read / clear hook
 │   └── services/
-│       ├── groq.js      # Whisper transcription + LLM completion
-│       └── commands.js  # Slash command detection + intent parsing
-├── start-electron.bat       # Launcher for preview (clears ELECTRON_RUN_AS_NODE)
-├── start-electron-dev.bat   # Launcher for dev mode
-└── package.json
+│       ├── groq.js        # Groq API (Whisper + LLaMA)
+│       ├── autoEdit.js    # Grammar + self-correction cleanup
+│       ├── snippets.js    # Snippet detection & expansion
+│       └── commands.js    # Slash command detection
+└── assets/
+    └── icon.svg           # App icon (convert to icon.png / icon.ico for tray & installer)
 ```
 
 ---
@@ -134,16 +148,10 @@ suniyeji_ai/
 ## Widget states
 
 ```
-Idle ──(mic pressed)──► Listening ──(stop)──► Thinking ──► Done
-                                                    │
-                                                    └──► Error ──(try again)──► Listening
+Idle ──(mic)──► Listening ──(stop)──► Thinking ──► Done ──(↑)──► Idle
+                                           │
+                                           └──► Error ──(try again)──► Listening
 ```
-
-- **Idle** — dark mic button, clipboard preview pill, command chips
-- **Listening** — saffron mic with pulsing rings, "Listening…"
-- **Thinking** — bouncing dots, "Processing…", detected-command pill
-- **Done** — scrollable result box, Inject + Copy buttons
-- **Error** — warning icon, plain-English message, "Try again"
 
 ---
 
@@ -153,7 +161,7 @@ Idle ──(mic pressed)──► Listening ──(stop)──► Thinking ─�
 npm run build
 ```
 
-Outputs a `.exe` NSIS installer to `release/`. Requires an `assets/icon.ico` file (256×256 recommended).
+Outputs a `.exe` NSIS installer to `release/`. Requires `assets/icon.ico` (convert from `assets/icon.svg`).
 
 ---
 
