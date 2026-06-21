@@ -6,7 +6,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   writeClipboard: (text) => ipcRenderer.invoke('clipboard:write', text),
 
   // Text injection
-  injectText: (text) => ipcRenderer.invoke('inject:text', text),
+  injectText:      (text) => ipcRenderer.invoke('inject:text', text),
+  quickInjectText: (text) => ipcRenderer.invoke('quick:inject', text),
 
   // Window
   hideWidget: () => ipcRenderer.invoke('window:hide'),
@@ -34,4 +35,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onOpenSettings:       (cb) => ipcRenderer.on('open:settings', cb),
   removeHotkeyListener: ()   => ipcRenderer.removeAllListeners('hotkey:triggered'),
   removeSettingsListener:()  => ipcRenderer.removeAllListeners('open:settings'),
+
+  // Quick record mode
+  onQuickStart:          (cb) => ipcRenderer.on('quick:start', (_, d) => cb(d)),
+  onQuickStop:           (cb) => ipcRenderer.on('quick:stop', cb),
+  removeQuickListeners:  ()   => {
+    ipcRenderer.removeAllListeners('quick:start')
+    ipcRenderer.removeAllListeners('quick:stop')
+  },
+  cancelQuick: () => ipcRenderer.invoke('quick:cancel'),
 })

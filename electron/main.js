@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain, clipboard, screen } = require('electron')
 const path = require('path')
-const { registerHotkeys, unregisterHotkeys } = require('./hotkey')
+const { registerHotkeys, unregisterHotkeys, cancelQuick } = require('./hotkey')
 const { restoreForeground } = require('./windows-focus')
 const { createTray, destroyTray } = require('./tray')
 const { injectText } = require('./injector')
@@ -62,15 +62,24 @@ ipcMain.handle('clipboard:write', (_, text)  => clipboard.writeText(text))
 
 // ── Injection ────────────────────────────────────────────────────────────────
 ipcMain.handle('inject:text', async (_, text) => {
-  restoreForeground()           // SetForegroundWindow on the app that was active before widget
+  restoreForeground()
   widgetWindow.hide()
   await new Promise(r => setTimeout(r, 350))
+  return await injectText(text)
+})
+
+// Quick inject — restores focus + pastes WITHOUT hiding the widget
+// (renderer controls when to hide so it can show the "Injected" confirmation)
+ipcMain.handle('quick:inject', async (_, text) => {
+  restoreForeground()
+  await new Promise(r => setTimeout(r, 200))
   return await injectText(text)
 })
 
 // ── Window ───────────────────────────────────────────────────────────────────
 ipcMain.handle('window:hide', () => widgetWindow.hide())
 ipcMain.handle('window:show', () => { widgetWindow.show(); widgetWindow.focus() })
+ipcMain.handle('quick:cancel', () => { cancelQuick(); widgetWindow.hide() })
 
 // resize:window is a no-op — window is fixed size, CSS handles layout
 ipcMain.handle('resize:window', () => {})

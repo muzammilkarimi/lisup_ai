@@ -6,7 +6,15 @@ export async function transcribeAudio(audioBlob, apiKey, language = 'auto') {
   formData.append('file', audioFile)
   formData.append('model', 'whisper-large-v3-turbo')
   formData.append('response_format', 'text')
-  if (language && language !== 'auto') formData.append('language', language)
+
+  const isHinglish = language === 'hinglish'
+  const whisperLang = isHinglish ? 'hi' : language
+  if (whisperLang && whisperLang !== 'auto') formData.append('language', whisperLang)
+  // Whisper mirrors the script of its prompt — supplying Roman-script words steers it
+  // away from Devanagari and produces Hinglish output
+  if (isHinglish) {
+    formData.append('prompt', 'yaar, kya, hai, theek, matlab, basically, toh, aur, lekin, bahut, accha, bilkul, nahi, haan, abhi, phir')
+  }
 
   const res = await fetch(`${GROQ_BASE}/audio/transcriptions`, {
     method: 'POST',
@@ -22,7 +30,8 @@ export async function transcribeAudio(audioBlob, apiKey, language = 'auto') {
 }
 
 // tone: 'formal' | 'casual' | 'funny' | 'polite' | 'social' | null
-export async function processWithAI(clipboardText, instruction, tone, apiKey, userName = '') {
+// outputLanguage: pass appSettings.language — 'hinglish' adds a Hinglish output rule
+export async function processWithAI(clipboardText, instruction, tone, apiKey, userName = '', outputLanguage = '') {
   const toneInstruction = tone && tone !== 'none'
     ? `\nApply a ${tone === 'social' ? 'social-media-post' : tone} tone to the output.`
     : ''
@@ -33,10 +42,13 @@ export async function processWithAI(clipboardText, instruction, tone, apiKey, us
 
   const hasClipboard = clipboardText && clipboardText.trim()
 
+  const hinglishInstruction = outputLanguage === 'hinglish'
+    ? '\nLanguage rule: ALWAYS respond in Hinglish — Hindi words written in Roman English script, naturally mixed with English. Never use Devanagari script under any circumstances.'
+    : '\nLanguage rule: if clipboard context is provided, respond in the same language as the clipboard text. If there is no clipboard context, respond in the same language as the user\'s command.'
+
   const systemPrompt = `You are a voice-powered writing assistant embedded in a desktop widget.
 Produce ONLY the output text. No explanations, no preamble, no markdown formatting unless explicitly asked.
-The output will be injected directly into the user's active text field.
-Language rule: if clipboard context is provided, respond in the same language as the clipboard text. If there is no clipboard context, respond in the same language as the user's command.${toneInstruction}${nameInstruction}`
+The output will be injected directly into the user's active text field.${hinglishInstruction}${toneInstruction}${nameInstruction}`
 
   const userMessage = hasClipboard
     ? `Context (selected text):\n"${clipboardText}"\n\nUser command: "${instruction}"`

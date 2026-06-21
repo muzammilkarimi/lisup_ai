@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Widget from './components/Widget.jsx'
 import Settings from './components/Settings.jsx'
+import QuickWidget from './components/QuickWidget.jsx'
 import { useRecorder } from './hooks/useRecorder.js'
 import { useClipboard } from './hooks/useClipboard.js'
 import { transcribeAudio, processWithAI } from './services/groq.js'
@@ -40,6 +41,11 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [hasApiKey, setHasApiKey]       = useState(true)
   const [appSettings, setAppSettings]   = useState(DEFAULT_SETTINGS)
+
+  const [quickMode, setQuickMode]       = useState(null)   // null | 'hold' | 'double'
+  const [quickStatus, setQuickStatus]   = useState('recording')
+  const [quickError, setQuickError]     = useState('')
+  const [quickWordCount, setQuickWordCount] = useState(0)
 
   const baseResultRef = useRef('')   // pre-tone result for re-applying different tones
   const dictionaryRef = useRef([])
@@ -103,6 +109,76 @@ export default function App() {
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [showSettings, hasApiKey])
+
+  // ── Quick record mode (hold / double press) ───────────────────────────────
+  useEffect(() => {
+    if (!window.electronAPI) return
+
+    window.electronAPI.onQuickStart(async ({ mode: qm }) => {
+      setQuickMode(qm)
+      setQuickStatus('recording')
+      setQuickError('')
+      setQuickWordCount(0)
+      try {
+        await startRecording()
+      } catch (err) {
+        setQuickStatus('error')
+        setQuickError('Microphone not available')
+      }
+    })
+
+    window.electronAPI.onQuickStop(async () => {
+      try {
+        const blob = await stopRecording()
+        if (!blob || blob.size < 500) {
+          setQuickStatus('error')
+          setQuickError("Couldn't hear anything. Try again.")
+          return
+        }
+        setQuickStatus('processing')
+
+        const apiKey = await window.electronAPI.getApiKey()
+        const rawTranscript = await transcribeAudio(blob, apiKey, appSettings.language || 'auto')
+        if (!rawTranscript || !rawTranscript.trim()) {
+          setQuickStatus('error')
+          setQuickError("Couldn't transcribe audio.")
+          return
+        }
+
+        let text = appSettings.removeFillers ? removeFillersLocally(rawTranscript) : rawTranscript
+        if (appSettings.autoEdit) text = await autoEditTranscript(text, apiKey)
+        text = applyDictionary(text, dictionaryRef.current)
+
+        setQuickWordCount(text.trim().split(/\s+/).length)
+
+        // Use quickInjectText — restores focus + pastes WITHOUT hiding the widget
+        // so we can show the "Injected" confirmation before disappearing
+        const res = await window.electronAPI.quickInjectText(text)
+        if (res && res.fallback) {
+          setQuickStatus('error')
+          setQuickError('Could not paste — text copied to clipboard instead')
+          return
+        }
+
+        setQuickStatus('done')
+        setTimeout(() => {
+          setQuickMode(null)
+          window.electronAPI.hideWidget()
+        }, 1200)
+      } catch (err) {
+        setQuickStatus('error')
+        setQuickError(getErrorMessage(err))
+      }
+    })
+
+    return () => window.electronAPI.removeQuickListeners?.()
+  }, [startRecording, stopRecording, appSettings])
+
+  const handleQuickCancel = useCallback(async () => {
+    try { await stopRecording() } catch {}
+    setQuickMode(null)
+    window.electronAPI?.cancelQuick()
+  }, [stopRecording])
 
   // ── Recording ──────────────────────────────────────────────────────────────
 
@@ -191,7 +267,9 @@ export default function App() {
             null,
             `Rephrase the following with a ${defaultTone} tone, preserving meaning:\n\n${processedResult}`,
             null,
-            apiKey
+            apiKey,
+            '',
+            settings.language
           )
           setActiveTone(defaultTone)
         }
@@ -206,7 +284,7 @@ export default function App() {
           return s ? s.expansion : null
         }, null)
         const resolvedName = settings.userName || nameFromSnippet || ''
-        processedResult = await processWithAI(freshClipboard, detection.instruction, null, apiKey, resolvedName)
+        processedResult = await processWithAI(freshClipboard, detection.instruction, null, apiKey, resolvedName, settings.language)
       }
 
       // STEP 9: Personal dictionary
@@ -244,7 +322,9 @@ export default function App() {
         null,
         `Rephrase the following text with a ${toneName} tone, keeping the same meaning:\n\n${baseResultRef.current}`,
         null,
-        apiKey
+        apiKey,
+        '',
+        appSettings.language
       )
       const final = applyDictionary(rephrased, dictionaryRef.current)
       setResult(final)
@@ -281,7 +361,7 @@ export default function App() {
         return s ? s.expansion : null
       }, null)
       const resolvedName = appSettings.userName || nameFromSnippet || ''
-      const res = await processWithAI(freshClipboard, slashCmd, null, apiKey, resolvedName)
+      const res = await processWithAI(freshClipboard, slashCmd, null, apiKey, resolvedName, appSettings.language)
       const final = applyDictionary(res, dictionaryRef.current)
       baseResultRef.current = final
       setResult(final)
@@ -330,6 +410,20 @@ export default function App() {
   }, [reloadUserData])
 
   // ── Render ─────────────────────────────────────────────────────────────────
+
+  if (quickMode) {
+    return (
+      <div style={{ width: 400 }}>
+        <QuickWidget
+          mode={quickMode}
+          status={quickStatus}
+          error={quickError}
+          wordCount={quickWordCount}
+          onCancel={handleQuickCancel}
+        />
+      </div>
+    )
+  }
 
   if (showSettings) {
     return (

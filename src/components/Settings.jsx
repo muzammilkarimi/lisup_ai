@@ -169,6 +169,7 @@ function GeneralTab({ onSave }) {
           <option value="auto">Auto-detect</option>
           <option value="en">English</option>
           <option value="hi">Hindi</option>
+          <option value="hinglish">Hindi — Hinglish (Roman script)</option>
           <option value="ur">Urdu</option>
           <option value="ar">Arabic</option>
           <option value="fr">French</option>
