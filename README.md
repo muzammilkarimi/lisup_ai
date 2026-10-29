@@ -8,7 +8,7 @@ A floating Windows desktop widget that turns your voice into polished text and A
 
 ## How it works
 
-1. Press **Alt + Space** — the widget appears bottom-right
+1. Press **Ctrl + Windows** — the widget appears bottom-right
 2. Speak naturally — transcribe, give a command, or trigger a snippet
 3. Click **Inject** — result is pasted into whatever app you were typing in
 
@@ -31,13 +31,13 @@ A floating Windows desktop widget that turns your voice into polished text and A
 
 | Layer | Choice |
 |---|---|
-| Shell | Electron 27 |
+| Shell | Electron 45 |
 | UI | React 18 + Vite 5 + Tailwind CSS v3 |
 | Transcription | Groq API — `whisper-large-v3-turbo` |
-| AI | Groq API — `llama-3.3-70b-versatile` |
-| Text injection | `@jitsi/robotjs` |
-| Global hotkey | Electron `globalShortcut` |
-| Storage | `electron-store` (saved to `AppData/Lisup/`) |
+| AI | Groq API — `openai/gpt-oss-120b` (one constant in `src/services/groq.js`) |
+| Text injection | `@jitsi/robotjs` + `koffi` (Win32 focus restore) |
+| Global hotkey | `uiohook-napi` (Ctrl+Win chord) |
+| Storage | `electron-store` (saved to `AppData/Lisup/`); API key encrypted with `safeStorage` |
 
 Everything runs locally except the two Groq API calls. No database, no server.
 
@@ -79,7 +79,7 @@ On first launch the Settings screen opens. Paste your Groq API key and hit **Sav
 
 | Action | How |
 |---|---|
-| Show / hide widget | `Alt + Space` |
+| Show / hide widget | `Ctrl + Windows` |
 | Start / stop recording | Click the mic button |
 | Inject result into active app | Click **Inject** |
 | Copy result | Click **Copy** |
@@ -121,7 +121,7 @@ lisup_ai/
 │   ├── main.js            # App lifecycle, IPC handlers, window setup
 │   ├── preload.js         # Context bridge (secure IPC to renderer)
 │   ├── store.js           # electron-store config (AppData/Lisup/)
-│   ├── hotkey.js          # Alt+Space global shortcut
+│   ├── hotkey.js          # Ctrl+Win global shortcut
 │   ├── tray.js            # System tray icon + context menu
 │   ├── injector.js        # Text injection via robotjs
 │   └── windows-focus.js   # Windows API focus management (SetForegroundWindow)

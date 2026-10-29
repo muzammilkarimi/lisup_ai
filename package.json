@@ -1,6 +1,6 @@
 {
   "name": "lisup",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Voice-powered AI writing assistant for Windows",
   "main": "electron/main.js",
   "scripts": {
@@ -11,6 +11,7 @@
   "dependencies": {
     "@jitsi/robotjs": "^0.6.0",
     "electron-store": "^8.1.0",
+    "koffi": "^3.3.5",
     "uiohook-napi": "^1.5.5"
   },
   "devDependencies": {
@@ -18,7 +19,7 @@
     "autoprefixer": "^10.4.0",
     "concurrently": "^8.0.0",
     "cross-env": "^10.1.0",
-    "electron": "^27.3.11",
+    "electron": "^45.1.0",
     "electron-builder": "^24.0.0",
     "postcss": "^8.4.0",
     "react": "^18.0.0",
@@ -30,9 +31,23 @@
   "build": {
     "appId": "com.lisup.app",
     "productName": "Lisup",
+    "directories": {
+      "output": "release"
+    },
+    "artifactName": "Lisup-Setup-${version}.${ext}",
+    "asarUnpack": [
+      "node_modules/koffi/**"
+    ],
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
     "win": {
       "target": "nsis",
-      "icon": "assets/icon.ico"
+      "icon": "assets/icon.ico",
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,
