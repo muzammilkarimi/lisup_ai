@@ -15,17 +15,23 @@ const SLASH_COMMANDS = {
 
 export const QUICK_COMMANDS = ['/reply', '/fix', '/formal', '/summarize', '/translate']
 
+// Whisper never emits "/reply" — spoken commands arrive as "slash reply" or a
+// bare "reply formally". Normalize all three forms. `explicit` is true when the
+// user said "slash"/typed "/", so auto mode can safely treat it as a command
+// without hijacking ordinary dictation that merely starts with e.g. "fix".
 export function detectCommand(transcript) {
-  const trimmed = transcript.trim().toLowerCase()
+  const trimmed = transcript.trim().toLowerCase().replace(/^[\s.,!?'"-]+/, '')
 
   for (const [cmd, instruction] of Object.entries(SLASH_COMMANDS)) {
-    if (trimmed.startsWith(cmd)) {
-      const extra = trimmed.slice(cmd.length).trim()
-      return {
-        type: 'slash',
-        command: cmd,
-        instruction: extra ? `${instruction} Additional instruction: ${extra}` : instruction,
-      }
+    const word = cmd.slice(1)
+    const m = trimmed.match(new RegExp(`^(?:(/|slash\\s+)\\s*)?${word}(?![a-z])`))
+    if (!m) continue
+    const extra = trimmed.slice(m[0].length).replace(/^[\s.,:;!?-]+/, '').trim()
+    return {
+      type: 'slash',
+      command: cmd,
+      explicit: !!m[1],
+      instruction: extra ? `${instruction} Additional instruction: ${extra}` : instruction,
     }
   }
 
@@ -33,8 +39,4 @@ export function detectCommand(transcript) {
     type: 'intent',
     instruction: transcript.trim(),
   }
-}
-
-export function buildFinalPrompt(detection) {
-  return detection.instruction
 }
