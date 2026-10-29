@@ -1,5 +1,6 @@
 const { Tray, Menu, nativeImage, app } = require('electron')
 const path = require('path')
+const { captureForeground } = require('./windows-focus')
 
 let tray = null
 
@@ -21,12 +22,12 @@ function createTray(widgetWindow) {
       { label: 'Lisup', enabled: false },
       { type: 'separator' },
       {
-        label: 'Toggle Widget',
-        accelerator: 'Alt+Space',
+        label: 'Toggle Widget (Ctrl+Win)',
         click: () => {
           if (widgetWindow.isVisible()) {
             widgetWindow.hide()
           } else {
+            captureForeground()
             widgetWindow.show()
             widgetWindow.focus()
             widgetWindow.webContents.send('hotkey:triggered')
@@ -55,6 +56,7 @@ function createTray(widgetWindow) {
     if (widgetWindow.isVisible()) {
       widgetWindow.hide()
     } else {
+      captureForeground()
       widgetWindow.show()
       widgetWindow.focus()
       widgetWindow.webContents.send('hotkey:triggered')
