@@ -1,6 +1,6 @@
 {
   "name": "lisup",
-  "version": "0.1.1",
+  "version": "2.0.0",
   "description": "Voice-powered AI writing assistant for Windows",
   "main": "electron/main.js",
   "scripts": {
