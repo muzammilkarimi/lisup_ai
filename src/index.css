@@ -4,11 +4,28 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-body {
+html, body {
+  width: 100%;
+  height: 100%;
   background: transparent;
-  font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
   overflow: hidden;
+}
+
+body {
+  font-family: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* The bar window is sized to its content (see BarFrame); content sits at the
+   bottom-center so growth always happens upward from the taskbar edge. */
+#root {
+  background: transparent;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 /* Thin scrollbar for settings panels */
@@ -16,23 +33,51 @@ body {
 .panel-scroll::-webkit-scrollbar-track { background: transparent; }
 .panel-scroll::-webkit-scrollbar-thumb { background: #D5CFC6; border-radius: 2px; }
 
-#root {
-  background: transparent;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-}
-
 /* Result scrollbar */
 .result-scroll::-webkit-scrollbar { width: 4px; }
 .result-scroll::-webkit-scrollbar-track { background: transparent; }
 .result-scroll::-webkit-scrollbar-thumb { background: #D5CFC6; border-radius: 2px; }
 
+/* Floating bar: bars grow out of the idle pill; waveform while recording */
+@keyframes pillIn {
+  from { opacity: 0; transform: translateY(6px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.pill-in { animation: pillIn 140ms ease-out both; }
+
+@keyframes waveBar {
+  0%, 100% { transform: scaleY(.3); }
+  50%      { transform: scaleY(1); }
+}
+.wave-bar { animation: waveBar .9s ease-in-out infinite; transform-origin: center; }
+
+/* Frameless windows: draggable title areas */
+.drag    { -webkit-app-region: drag; }
+.no-drag { -webkit-app-region: no-drag; }
+
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .animate-ring-a, .animate-ring-b,
-  .animate-dot-1, .animate-dot-2, .animate-dot-3 {
+  .animate-dot-1, .animate-dot-2, .animate-dot-3,
+  .wave-bar, .pill-in {
     animation: none !important;
   }
 }
+
+/* Onboarding: each step eases in */
+@keyframes stepIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.step-in { animation: stepIn 220ms ease-out both; }
+@media (prefers-reduced-motion: reduce) { .step-in { animation: none !important; } }
+
+/* Recording bar (hands-free modes): the label swaps to a hint on hover, in
+   pure CSS so it works even when the bar appears under a stationary pointer */
+/* Both labels sit in the same grid cell (the cell is as wide as the longer
+   one) and only visibility flips, so hovering never changes the bar's size */
+.stop-label { display: inline-grid; }
+.stop-label > span { grid-area: 1 / 1; }
+.stop-bar .when-hover { visibility: hidden; }
+.stop-bar:hover .when-hover { visibility: visible; }
+.stop-bar:hover .when-idle { visibility: hidden; }

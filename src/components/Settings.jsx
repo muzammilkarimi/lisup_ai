@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import LisupIcon from './LisupIcon.jsx'
+import { validateApiKey } from '../services/groq.js'
 
 // ── Shared ─────────────────────────────────────────────────────────────────────
 
@@ -41,6 +42,9 @@ function GeneralTab({ onSave }) {
   const [userName, setUserName]      = useState('')
   const [autoEdit, setAutoEdit]      = useState(true)
   const [removeFillers, setFillers]  = useState(true)
+  const [perAppStyles, setPerAppStyles] = useState(true)
+  const [pasteWhereStarted, setPasteWhereStarted] = useState(true)
+  const [keepOnClipboard, setKeepOnClipboard] = useState(false)
   const [autoStart, setAutoStart]    = useState(false)
   const [defaultTone, setTone]       = useState('none')
   const [language, setLanguage]      = useState('auto')
@@ -54,6 +58,9 @@ function GeneralTab({ onSave }) {
       if (!s) return
       setAutoEdit(s.autoEdit ?? true)
       setFillers(s.removeFillers ?? true)
+      setPerAppStyles(s.perAppStyles ?? true)
+      setPasteWhereStarted(s.pasteWhereStarted ?? true)
+      setKeepOnClipboard(s.keepDictationOnClipboard ?? false)
       setAutoStart(s.autoStart ?? false)
       setTone(s.defaultTone ?? 'none')
       setLanguage(s.language ?? 'auto')
@@ -63,17 +70,24 @@ function GeneralTab({ onSave }) {
 
   async function handleSave() {
     const trimmed = key.trim()
-    if (!trimmed)                      { setKeyError('API key cannot be empty.'); return }
-    if (!trimmed.startsWith('gsk_'))   { setKeyError('Groq API keys start with "gsk_".'); return }
+    if (!trimmed)                    { setKeyError('API key cannot be empty.'); return }
+    if (!trimmed.startsWith('gsk_')) { setKeyError('Groq API keys start with "gsk_".'); return }
     setKeyError('')
     setSaving(true)
     try {
-      const settings = { autoEdit, removeFillers, autoStart, defaultTone, language, userName: userName.trim() }
+      await validateApiKey(trimmed)
+      const settings = { autoEdit, removeFillers, perAppStyles, pasteWhereStarted, keepDictationOnClipboard: keepOnClipboard, autoStart, defaultTone, language, userName: userName.trim() }
       await window.electronAPI.setApiKey(trimmed)
       await window.electronAPI.saveSettings(settings)
       onSave(settings)
-    } catch {
-      setKeyError('Failed to save. Try again.')
+    } catch (error) {
+      if (error?.message === 'INVALID_API_KEY') {
+        setKeyError('Groq rejected this key. Create a new key and try again.')
+      } else if (error?.message === 'KEY_VALIDATION_FAILED') {
+        setKeyError('Groq could not verify this key. Try again shortly.')
+      } else {
+        setKeyError('Could not verify the key. Check your connection.')
+      }
     } finally {
       setSaving(false)
     }
@@ -85,7 +99,7 @@ function GeneralTab({ onSave }) {
       <div>
         <SectionHeader>Groq API Key</SectionHeader>
         <p className="text-[12.5px] mb-2" style={{ color: '#9A938A' }}>
-          Free key at <span className="font-semibold" style={{ color: '#524E47' }}>console.groq.com</span> — no credit card.
+          Create a key at <span className="font-semibold" style={{ color: '#524E47' }}>console.groq.com</span>.
         </p>
         <div className="relative">
           <span className="absolute left-[13px] top-1/2 -translate-y-1/2" style={{ color: '#BDB6AC' }}>
@@ -146,7 +160,22 @@ function GeneralTab({ onSave }) {
           <Toggle
             checked={removeFillers} onChange={setFillers}
             label="Remove filler words"
-            sub="Strip um, uh, like, basically, you know before processing"
+            sub="Strip hesitation sounds (um, uh, hmm) before processing"
+          />
+          <Toggle
+            checked={perAppStyles} onChange={setPerAppStyles}
+            label="Match the app's style"
+            sub="Casual in chat apps, professional in email, literal in code editors"
+          />
+          <Toggle
+            checked={pasteWhereStarted} onChange={setPasteWhereStarted}
+            label="Paste where I started speaking"
+            sub="Returns to your original text box even if you clicked elsewhere. If none is selected, the text is copied and you're told"
+          />
+          <Toggle
+            checked={keepOnClipboard} onChange={setKeepOnClipboard}
+            label="Keep what I dictate on the clipboard"
+            sub="Off by default: dictated text is typed in and whatever you had copied is put back. Turn on to also paste it again with Ctrl+V"
           />
         </div>
       </div>
@@ -460,9 +489,152 @@ function SnippetsTab() {
   )
 }
 
+// ── Tab: People ────────────────────────────────────────────────────────────────
+
+// "- Ahsan\n• Almas, Sufyan and Farhan" -> ['Ahsan','Almas','Sufyan','Farhan']
+function parseNames(text) {
+  return text
+    .split(/[\n,;]+|\s+and\s+/i)
+    .map(n => n.replace(/^[\s\-•*\d.)]+/, '').trim())
+    .filter(n => n && n.length <= 40)
+}
+
+function PeopleTab() {
+  const [people, setPeople] = useState([])
+  const [pasteText, setPasteText] = useState('')
+  const [pasteRel, setPasteRel] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved]   = useState(false)
+  const [error, setError]   = useState('')
+
+  useEffect(() => {
+    window.electronAPI?.getPeople?.()
+      .then(p => setPeople(p || []))
+      .catch(() => setError('Could not load saved names.'))
+  }, [])
+
+  const update = (i, field, val) => setPeople(l => l.map((p, idx) => idx === i ? { ...p, [field]: val } : p))
+  const remove = (i) => setPeople(l => l.filter((_, idx) => idx !== i))
+
+  function addPasted() {
+    const names = parseNames(pasteText)
+    if (!names.length) return
+    setPeople(l => {
+      const have = new Set(l.map(p => p.name.toLowerCase()))
+      const fresh = names
+        .filter((n, i) => !have.has(n.toLowerCase()) && names.findIndex(x => x.toLowerCase() === n.toLowerCase()) === i)
+        .map(name => ({ name, relation: pasteRel.trim().toLowerCase(), auto: false }))
+      return [...l, ...fresh]
+    })
+    setPasteText('')
+    setSaved(false)
+  }
+
+  async function handleSave() {
+    const valid = people.filter(p => p.name.trim()).map(p => ({ ...p, name: p.name.trim() }))
+    setSaving(true); setError('')
+    try {
+      await window.electronAPI.savePeople(valid)
+      setPeople(valid)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+      setError('Save failed. Try restarting the app.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const field = {
+    background: '#F5F4F1', border: '1px solid #ECE7DF', padding: '8px 11px', color: '#26231F',
+  }
+  const focus = e => { e.target.style.borderColor = '#E07B39' }
+  const blur  = e => { e.target.style.borderColor = '#ECE7DF' }
+
+  return (
+    <div>
+      <p className="text-[12.5px] mb-4" style={{ color: '#9A938A', lineHeight: 1.5 }}>
+        Lisup learns names when you introduce people while dictating (“my brothers are Ahsan and Almas…”)
+        and spells them right next time. You can also add them here.
+      </p>
+
+      <div className="mb-4 rounded-[12px]" style={{ background: '#F5F4F1', padding: '11px 12px' }}>
+        <textarea
+          value={pasteText}
+          onChange={e => setPasteText(e.target.value)}
+          placeholder={'Paste or type names — one per line or separated by commas'}
+          rows={3}
+          className="w-full text-[12.5px] outline-none resize-none rounded-[9px]"
+          style={{ background: '#fff', border: '1px solid #ECE7DF', padding: '8px 11px', color: '#26231F' }}
+          onFocus={focus} onBlur={blur}
+        />
+        <div className="flex gap-2 mt-2">
+          <input
+            value={pasteRel}
+            onChange={e => setPasteRel(e.target.value)}
+            placeholder="They are my… (e.g. brother)"
+            className="flex-1 text-[12.5px] outline-none rounded-[9px]"
+            style={{ background: '#fff', border: '1px solid #ECE7DF', padding: '8px 11px', color: '#26231F' }}
+            onFocus={focus} onBlur={blur}
+          />
+          <button
+            onClick={addPasted}
+            disabled={!parseNames(pasteText).length}
+            className="text-[12.5px] font-semibold rounded-[9px] transition-opacity hover:opacity-85 disabled:opacity-40"
+            style={{ background: '#E07B39', color: '#fff', padding: '0 16px' }}
+          >
+            Add {parseNames(pasteText).length > 0 ? parseNames(pasteText).length : ''}
+          </button>
+        </div>
+      </div>
+
+      {people.length === 0 ? (
+        <p className="text-center text-[12.5px] py-3" style={{ color: '#BDB6AC' }}>No names saved yet.</p>
+      ) : (
+        <div className="flex flex-col gap-2 mb-3">
+          {people.map((person, i) => (
+            <div key={i} className="flex gap-2 items-center">
+              <input
+                value={person.name}
+                onChange={e => update(i, 'name', e.target.value)}
+                placeholder="Name"
+                className="flex-1 min-w-0 text-[12.5px] outline-none rounded-[9px]"
+                style={field} onFocus={focus} onBlur={blur}
+              />
+              <input
+                value={person.relation || ''}
+                onChange={e => update(i, 'relation', e.target.value)}
+                placeholder="relation"
+                className="text-[12.5px] outline-none rounded-[9px]"
+                style={{ ...field, width: 104 }} onFocus={focus} onBlur={blur}
+              />
+              <button onClick={() => remove(i)} title="Remove" style={{ color: '#BDB6AC' }} className="hover:opacity-60 transition-opacity">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {error && <p className="text-[12px] mb-2" style={{ color: '#CB4F37' }}>{error}</p>}
+
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="w-full text-[13px] font-semibold rounded-btn transition-opacity hover:opacity-80 disabled:opacity-50"
+        style={{ background: saved ? '#2D7A4F' : '#23201C', color: 'white', padding: '11px 0' }}
+      >
+        {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save names'}
+      </button>
+    </div>
+  )
+}
+
 // ── Root ───────────────────────────────────────────────────────────────────────
 
-const TABS = ['General', 'Dictionary', 'Snippets']
+const TABS = ['General', 'Dictionary', 'Snippets', 'People']
 
 export default function Settings({ onSave, onBack }) {
   const [activeTab, setActiveTab] = useState('General')
@@ -521,12 +693,13 @@ export default function Settings({ onSave, onBack }) {
         style={{
           padding: '16px 18px 20px',
           overflowY: 'auto',
-          maxHeight: 'calc(100vh - 90px)',
+          maxHeight: 480,
         }}
       >
         {activeTab === 'General'    && <GeneralTab    onSave={onSave} />}
         {activeTab === 'Dictionary' && <DictionaryTab />}
         {activeTab === 'Snippets'   && <SnippetsTab />}
+        {activeTab === 'People'     && <PeopleTab />}
       </div>
     </div>
   )

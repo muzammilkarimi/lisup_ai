@@ -11,7 +11,7 @@ const TONES = [
 
 // ── Shared header ──────────────────────────────────────────────────────────────
 
-function Header({ onHide, onOpenSettings }) {
+function Header({ onHide, onOpenSettings, onOpenHistory }) {
   return (
     <div className="flex justify-between items-center" style={{ padding: '14px 18px 0' }}>
       <button
@@ -23,6 +23,17 @@ function Header({ onHide, onOpenSettings }) {
           Lis<span style={{ color: '#E07B39' }}>up</span>
         </span>
       </button>
+      <div className="flex items-center gap-2">
+      <button
+        onClick={onOpenHistory}
+        className="w-[22px] h-[22px] rounded-full flex items-center justify-center transition-opacity hover:opacity-70"
+        style={{ background: '#F5F4F1', color: '#BDB6AC' }}
+        title="History"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
+        </svg>
+      </button>
       <button
         onClick={onHide}
         className="w-[22px] h-[22px] rounded-full flex items-center justify-center transition-opacity hover:opacity-70"
@@ -33,50 +44,7 @@ function Header({ onHide, onOpenSettings }) {
           <path d="M1 1L8 8M8 1L1 8" stroke="#BDB6AC" strokeWidth="1.6" strokeLinecap="round" />
         </svg>
       </button>
-    </div>
-  )
-}
-
-// ── Clipboard pill ─────────────────────────────────────────────────────────────
-
-function ClipboardPill({ text, onRefresh, onClear }) {
-  const hasText = text && text.trim()
-  return (
-    <div className="flex items-center gap-1.5 mx-4 mt-2.5">
-      <div
-        className="flex-1 min-w-0 text-[12px] rounded-[9px] truncate leading-none"
-        style={{ background: '#F5F4F1', color: '#8C857B', padding: '7px 11px' }}
-        title={text || ''}
-      >
-        {hasText
-          ? <>📋 {text.slice(0, 44)}{text.length > 44 ? '…' : ''}</>
-          : <span style={{ color: '#C5BFB8' }}>📋 Copy text, then speak a command</span>
-        }
       </div>
-      {hasText && (
-        <button
-          onClick={onClear}
-          title="Clear context"
-          className="flex-shrink-0 transition-opacity hover:opacity-60"
-          style={{ color: '#C5BFB8' }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-      )}
-      <button
-        onClick={onRefresh}
-        title="Re-read clipboard"
-        className="flex-shrink-0 transition-opacity hover:opacity-60"
-        style={{ color: '#C5BFB8' }}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round">
-          <path d="M4 4v5h5M20 20v-5h-5" />
-          <path d="M4 9a9 9 0 0 1 15-4.5M20 15a9 9 0 0 1-15 4.5" />
-        </svg>
-      </button>
     </div>
   )
 }
@@ -186,7 +154,7 @@ function IdleView({ onStart, manualMode, onSetManualMode }) {
       </div>
       <p className="mt-2 text-[12.5px] font-medium" style={{ color: '#9A938A' }}>
         {manualMode === 'transcribe' && 'Speak — will clean your transcript'}
-        {manualMode === 'command'    && 'Speak your command'}
+        {manualMode === 'command'    && 'Copy some text, then speak a command'}
         {manualMode === 'auto'       && 'Press to speak'}
       </p>
     </div>
@@ -338,14 +306,12 @@ function ErrorView({ error, onTryAgain }) {
 // ── Root ───────────────────────────────────────────────────────────────────────
 
 export default function Widget({
-  status, mode, manualMode, clipboardText, result, error,
+  status, mode, manualMode, result, error,
   detectedCommand, activeTone,
   onStartRecording, onStopRecording, onInject, onCopy, onNew,
-  onRunCommand, onApplyTone, onSetManualMode, onHide, onOpenSettings,
-  onRefreshClipboard, onClearClipboard, onTryAgain,
+  onRunCommand, onApplyTone, onSetManualMode, onHide, onOpenSettings, onOpenHistory,
+  onTryAgain,
 }) {
-  const showClipPill = status !== 'done' && status !== 'error'
-
   return (
     <div
       className="w-[400px] rounded-widget select-none pb-2"
@@ -355,11 +321,8 @@ export default function Widget({
         boxShadow: '0 24px 60px -22px rgba(58,48,33,.45), 0 1px 2px rgba(0,0,0,.04)',
       }}
     >
-      <Header onHide={onHide} onOpenSettings={onOpenSettings} />
+      <Header onHide={onHide} onOpenSettings={onOpenSettings} onOpenHistory={onOpenHistory} />
 
-      {showClipPill && (
-        <ClipboardPill text={clipboardText} onRefresh={onRefreshClipboard} onClear={onClearClipboard} />
-      )}
 
       {status === 'idle' && (
         <>
