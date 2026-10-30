@@ -2,6 +2,12 @@
   "name": "lisup",
   "version": "2.0.0",
   "description": "Voice-powered AI writing assistant for Windows",
+  "author": "Muzammil Ahmad Karimi",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/muzammilkarimi/lisup_ai.git"
+  },
   "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && start-electron-dev.bat\"",
@@ -22,6 +28,7 @@
     "electron": "^45.1.0",
     "electron-builder": "^24.0.0",
     "postcss": "^8.4.0",
+    "rcedit": "^5.0.2",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "tailwindcss": "^3.4.0",
@@ -35,6 +42,7 @@
       "output": "release"
     },
     "artifactName": "Lisup-Setup-${version}.${ext}",
+    "afterPack": "electron/afterPack.js",
     "asarUnpack": [
       "node_modules/koffi/**"
     ],
@@ -52,6 +60,10 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
-    }
+    },
+    "electronLanguages": [
+      "en-US"
+    ],
+    "compression": "maximum"
   }
 }

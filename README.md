@@ -168,3 +168,10 @@ Outputs a `.exe` NSIS installer to `release/`. Requires `assets/icon.ico` (conve
 ## License
 
 MIT
+
+## Code signing
+
+Windows releases are signed for free by the [SignPath Foundation](https://signpath.org/foundation)
+using a certificate issued to them for open-source projects. Release builds run in GitHub Actions
+(`.github/workflows/release.yml`) and are submitted to SignPath after the build. SHA-256 checksums
+are attached to each release.
