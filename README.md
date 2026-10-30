@@ -6,6 +6,10 @@ A floating Windows desktop widget that turns your voice into polished text and A
 
 **[Website](https://www.lisupai.online/)** · **[Download for Windows](https://github.com/muzammilkarimi/lisup_ai/releases/latest)** · Featured on [Product Hunt](https://www.producthunt.com/products/lisup), [ListBulb](https://www.listbulb.com/tools/lisupai), [SaaSCity](https://saascity.io/live/lisup) and [Needl](https://neeed.directory/products/lisup)
 
+<video src="docs/lisup-demo.mp4" controls muted width="100%"></video>
+
+[Watch the demo video](docs/lisup-demo.mp4)
+
 ---
 
 ## How it works
