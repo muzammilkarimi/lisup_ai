@@ -4,6 +4,8 @@
 
 A floating Windows desktop widget that turns your voice into polished text and AI-powered writing — injected directly into any app.
 
+**[Website](https://www.lisupai.online/)** · **[Download for Windows](https://github.com/muzammilkarimi/lisup_ai/releases/latest)** · Featured on [Product Hunt](https://www.producthunt.com/products/lisup), [ListBulb](https://www.listbulb.com/tools/lisupai), [SaaSCity](https://saascity.io/live/lisup) and [Needl](https://neeed.directory/products/lisup)
+
 ---
 
 ## How it works
